@@ -106,7 +106,13 @@
   "linkedin": {
     "profilesFile": "/home/vankhoa/projects/aikeytake/workspace/marketing/linkedin_kol_clean.json",
     "enabled": true,
-    "limit": 20
+    "batchSize": 8,
+    "budgetPerRun": 25,
+    "checkIntervalHours": 24,
+    "timeRange": "w",
+    "resultsPerBatch": 10,
+    "enrichContent": true,
+    "enrichConcurrency": 5
   },
   "youtube": {
     "channels": [

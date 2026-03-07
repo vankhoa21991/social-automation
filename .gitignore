@@ -12,6 +12,7 @@ logs/
 
 # Data
 data/
+!data/.gitkeep
 
 # IDE
 .vscode/
