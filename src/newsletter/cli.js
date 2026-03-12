@@ -3,6 +3,7 @@
  * Command-line interface for newsletter management
  */
 
+import 'dotenv/config';
 import NewsletterService from './api/newsletter-service.js';
 import createLogger from '../utils/logger.js';
 import fs from 'fs/promises';

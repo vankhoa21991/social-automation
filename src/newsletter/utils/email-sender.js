@@ -22,10 +22,13 @@ class EmailSender {
     if (this.initialized) return;
 
     if (this.config.provider === 'smtp') {
+      // Port 465 requires SSL (secure: true), Port 587 uses STARTTLS (secure: false)
+      const secure = this.config.smtp.secure || this.config.smtp.port === 465;
+
       this.transporter = nodemailer.createTransport({
         host: this.config.smtp.host,
         port: this.config.smtp.port,
-        secure: this.config.smtp.secure || false,
+        secure: secure,
         auth: {
           user: this.config.smtp.user,
           pass: this.config.smtp.pass
