@@ -9,14 +9,22 @@
     "scrape": "node src/index.js scrape",
     "query": "node src/query.js",
     "queue": "node src/cli.js queue",
-    "test": "node src/test.js"
+    "test": "node src/test.js",
+    "newsletter": "node src/newsletter/cli.js",
+    "newsletter:stats": "node src/newsletter/cli.js stats",
+    "newsletter:add": "node src/newsletter/cli.js add",
+    "newsletter:generate": "node src/newsletter/cli.js generate",
+    "newsletter:send": "node src/newsletter/cli.js send",
+    "newsletter:test": "node src/newsletter/cli.js test"
   },
   "keywords": [
     "social-media",
     "content-aggregation",
     "ai",
     "research-tool",
-    "agent-tool"
+    "agent-tool",
+    "newsletter",
+    "email-marketing"
   ],
   "author": "aikeytake",
   "license": "MIT",
@@ -24,6 +32,7 @@
     "axios": "^1.7.9",
     "cheerio": "^1.0.0",
     "dotenv": "^16.4.7",
+    "nodemailer": "^6.9.15",
     "rss-parser": "^3.13.0"
   },
   "devDependencies": {
