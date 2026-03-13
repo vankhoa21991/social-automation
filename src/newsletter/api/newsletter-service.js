@@ -188,6 +188,20 @@ class NewsletterService {
   }
 
   /**
+   * Generate AI-enhanced newsletter using Writer-Critic agents
+   */
+  async generateEnhanced(date, options = {}) {
+    try {
+      const newsletter = await Newsletter.generateIterative(date, options);
+      logger.success(`AI-enhanced newsletter generated: ${newsletter.id}`);
+      return newsletter;
+    } catch (error) {
+      logger.error(`Failed to generate enhanced newsletter: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * Schedule newsletter
    */
   async scheduleNewsletter(id, scheduledAt) {

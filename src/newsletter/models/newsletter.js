@@ -6,6 +6,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { generateId } from '../utils/helpers.js';
+import { IterativeWorkflow } from '../../writing-agents/core/iterative-workflow.js';
 
 const NEWSLETTERS_FILE = path.join(process.cwd(), 'src/newsletter/data/newsletters.json');
 
@@ -169,6 +170,67 @@ class Newsletter {
         itemCount: items.length
       }
     });
+
+    return newsletter;
+  }
+
+  /**
+   * Generate AI-enhanced newsletter using Writer-Critic agents
+   */
+  static async generateIterative(date, options = {}) {
+    const {
+      maxItems = 5,
+      title = 'AI-Enhanced Analysis',
+      maxIterations = 3,
+      qualityThreshold = 8,
+      verbose = true
+    } = options;
+
+    // Load trending data
+    const trendingFile = path.join(process.cwd(), `data/${date}/trending.json`);
+    const trendingData = JSON.parse(await fs.readFile(trendingFile, 'utf-8'));
+
+    // Select top items
+    const items = trendingData.items.slice(0, maxItems);
+
+    if (verbose) {
+      console.log(`\n🤖 Generating AI-enhanced newsletter from ${date}`);
+      console.log(`   Articles: ${items.length}`);
+      console.log(`   Max iterations: ${maxIterations}`);
+      console.log(`   Quality threshold: ${qualityThreshold}/10`);
+    }
+
+    // Initialize workflow
+    const workflow = new IterativeWorkflow({
+      maxIterations,
+      qualityThreshold,
+      verbose
+    });
+
+    // Run iterative writing process
+    const result = await workflow.run(items, { verbose });
+
+    // Create newsletter from finalized draft
+    const newsletter = await Newsletter.create({
+      title: `${title} - ${date}`,
+      subject: result.draft.subject || `${title} - ${date}`,
+      previewText: result.draft.previewText || `AI-enhanced newsletter from ${date}`,
+      content: result.draft.htmlContent,
+      textContent: result.draft.textContent,
+      metadata: {
+        generatedFrom: 'iterative-ai',
+        date: date,
+        itemCount: items.length,
+        iterations: result.iterations,
+        qualityScore: result.qualityScore,
+        isSatisfactory: result.isSatisfactory,
+        maxIterationsReached: result.maxIterationsReached
+      }
+    });
+
+    if (verbose) {
+      console.log(`\n✅ AI-enhanced newsletter created: ${newsletter.id}`);
+    }
 
     return newsletter;
   }

@@ -49,6 +49,7 @@ Commands:
   newsletter:list                    List all newsletters
   newsletter:create <title>          Create new newsletter
   newsletter:generate <date>         Generate newsletter from trending data
+  newsletter:generate:enhanced <date> Generate AI-enhanced newsletter (Writer-Critic agents)
   newsletter:schedule <id> <date>    Schedule newsletter for sending
   newsletter:send <id>               Send newsletter
   newsletter:test <id> <email>       Test send newsletter to email
@@ -59,6 +60,7 @@ Examples:
   node src/newsletter/cli.js stats
   node src/newsletter/cli.js add user@example.com "John Doe"
   node src/newsletter/cli.js generate 2026-03-12
+  node src/newsletter/cli.js generate:enhanced 2026-03-12
   node src/newsletter/cli.js send news_1234567890_abc123
   node src/newsletter/cli.js test news_1234567890_abc123 test@example.com
 
@@ -254,6 +256,34 @@ async function generateNewsletter(date) {
 }
 
 /**
+ * Generate AI-enhanced newsletter using Writer-Critic agents
+ */
+async function generateEnhancedNewsletter(date) {
+  try {
+    console.log(`\n🤖 Generating AI-enhanced newsletter with Writer-Critic agents...`);
+    console.log(`This may take several minutes as agents iterate through the content.\n`);
+
+    const newsletter = await service.generateEnhanced(date, {
+      maxItems: 5,
+      title: 'AI-Enhanced Analysis',
+      maxIterations: 3,
+      qualityThreshold: 8
+    });
+
+    console.log(`\n✅ AI-enhanced newsletter generated:`);
+    console.log(`  ID: ${newsletter.id}`);
+    console.log(`  Title: ${newsletter.title}`);
+    console.log(`  Type: ${newsletter.metadata.generatedFrom}`);
+    console.log(`  Iterations: ${newsletter.metadata.iterations}`);
+    console.log(`  Quality score: ${newsletter.metadata.qualityScore}/10`);
+    console.log(`  Satisfactory: ${newsletter.metadata.isSatisfactory ? '✅ Yes' : '⚠️ No'}`);
+    console.log(`  Status: ${newsletter.status}`);
+  } catch (error) {
+    logger.error(`Failed to generate enhanced newsletter: ${error.message}`);
+  }
+}
+
+/**
  * Schedule newsletter
  */
 async function scheduleNewsletter(id, scheduledAt) {
@@ -380,6 +410,9 @@ async function main() {
       break;
     case 'generate':
       await generateNewsletter(args[0]);
+      break;
+    case 'generate:enhanced':
+      await generateEnhancedNewsletter(args[0]);
       break;
     case 'schedule':
       await scheduleNewsletter(args[0], args[1]);
