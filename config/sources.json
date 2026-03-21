@@ -274,7 +274,10 @@
         "AnthropicAI",
         "GoogleAI"
       ],
-      "minLikes": 100
+      "minLikes": 100,
+      "maxTweetsPerAccount": 5,
+      "maxAgeHours": 24,
+      "delayBetweenAccountsMs": 3000
     }
   },
   "trendAnalysis": {

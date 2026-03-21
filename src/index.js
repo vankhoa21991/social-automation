@@ -5,6 +5,7 @@ import redditFetch from './fetchers/reddit.js';
 import hnFetch from './fetchers/hackernews.js';
 import linkedinFetch from './fetchers/linkedin.js';
 import apiFetch from './fetchers/api.js';
+import twitterFetch from './fetchers/twitter.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -102,6 +103,20 @@ class ContentScraper {
       } catch (error) {
         logger.error(`${source.name} fetch failed: ${error.message}`);
         results.sources[source.id] = 0;
+      }
+    }
+
+    // Twitter / X
+    if (this.config.trendingSources?.twitter?.enabled) {
+      logger.info('🐦 Fetching from Twitter/X...');
+      try {
+        const twitterItems = await twitterFetch(this.config);
+        results.sources.twitter = twitterItems.length;
+        await this.saveSourceData('twitter', twitterItems);
+        logger.success(`✅ Twitter: ${twitterItems.length} items`);
+      } catch (error) {
+        logger.error(`Twitter fetch failed: ${error.message}`);
+        results.sources.twitter = 0;
       }
     }
 
