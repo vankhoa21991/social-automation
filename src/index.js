@@ -4,6 +4,7 @@ import rssFetch from './fetchers/rss.js';
 import redditFetch from './fetchers/reddit.js';
 import hnFetch from './fetchers/hackernews.js';
 import linkedinFetch from './fetchers/linkedin.js';
+import productHuntFetch from './fetchers/producthunt.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -89,6 +90,20 @@ class ContentScraper {
       }
     }
 
+    // Product Hunt
+    if (this.config.producthunt?.enabled) {
+      logger.info('🚀 Fetching from Product Hunt...');
+      try {
+        const phItems = await productHuntFetch(this.config);
+        results.sources.producthunt = phItems.length;
+        await this.saveSourceData('producthunt', phItems);
+        logger.success(`✅ Product Hunt: ${phItems.length} items`);
+      } catch (error) {
+        logger.error(`Product Hunt fetch failed: ${error.message}`);
+        results.sources.producthunt = 0;
+      }
+    }
+
     // LinkedIn
     if (this.config.linkedin?.enabled) {
       logger.info('💼 Fetching from LinkedIn...');
@@ -130,7 +145,7 @@ class ContentScraper {
     const allItems = [];
 
     // Load all source files
-    const sources = ['rss', 'reddit', 'hackernews', 'linkedin'];
+    const sources = ['rss', 'reddit', 'hackernews', 'producthunt', 'linkedin'];
     for (const source of sources) {
       const filePath = path.join(this.today, `${source}.json`);
       if (fs.existsSync(filePath)) {
@@ -249,6 +264,7 @@ async function main() {
   switch (command) {
     case 'scrape':
       await scraper.scrapeAll();
+      process.exit(0);
       break;
 
     default:

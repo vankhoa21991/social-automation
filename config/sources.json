@@ -103,6 +103,12 @@
       "enabled": true
     }
   ],
+  "producthunt": {
+    "enabled": true,
+    "limit": 30,
+    "minVotes": 50,
+    "daysBack": 7
+  },
   "linkedin": {
     "profilesFile": "/home/vankhoa/projects/aikeytake/workspace/marketing/linkedin_kol_clean.json",
     "enabled": true,
