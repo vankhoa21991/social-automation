@@ -6,6 +6,7 @@ import hnFetch from './fetchers/hackernews.js';
 import linkedinFetch from './fetchers/linkedin.js';
 import apiFetch from './fetchers/api.js';
 import twitterFetch from './fetchers/twitter.js';
+import linkedinBrowserFetch from './fetchers/linkedin_browser.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -103,6 +104,20 @@ class ContentScraper {
       } catch (error) {
         logger.error(`${source.name} fetch failed: ${error.message}`);
         results.sources[source.id] = 0;
+      }
+    }
+
+    // LinkedIn Browser
+    if (this.config.linkedin_browser?.enabled) {
+      logger.info('💼 Fetching from LinkedIn (browser)...');
+      try {
+        const items = await linkedinBrowserFetch(this.config);
+        results.sources.linkedin_browser = items.length;
+        await this.saveSourceData('linkedin_browser', items);
+        logger.success(`✅ LinkedIn Browser: ${items.length} items`);
+      } catch (error) {
+        logger.error(`LinkedIn Browser fetch failed: ${error.message}`);
+        results.sources.linkedin_browser = 0;
       }
     }
 

@@ -11,7 +11,8 @@
     "queue": "node src/cli.js queue",
     "test": "node src/test.js",
     "setup:twitter": "node src/setup/twitter-login.js",
-    "test:twitter": "node src/test/twitter.js"
+    "test:twitter": "node src/test/twitter.js",
+    "test:linkedin": "node src/test/linkedin.js"
   },
   "keywords": [
     "social-media",
