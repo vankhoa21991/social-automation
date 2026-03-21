@@ -103,12 +103,80 @@
       "enabled": true
     }
   ],
-  "producthunt": {
-    "enabled": true,
-    "limit": 30,
-    "minVotes": 50,
-    "daysBack": 7
-  },
+  "apiSources": [
+    {
+      "id": "goodailist",
+      "name": "Good AI List",
+      "enabled": true,
+      "weight": 0.5,
+      "request": {
+        "url": "https://goodailist.com/api/repos",
+        "method": "GET",
+        "params": { "page": 1, "limit": 100, "sort": "star_1d", "order": "desc" }
+      },
+      "response": {
+        "itemsPath": "repos"
+      },
+      "mapping": {
+        "title": "repo",
+        "link": "https://github.com/{repo}",
+        "summary": "description",
+        "content": "description",
+        "author": { "field": "repo", "split": "/", "index": 0 },
+        "pubDate": "created_at",
+        "category": "category",
+        "tags": { "field": "keywords", "split": "," },
+        "engagement.upvotes": "star_1d",
+        "metadata.stars": "stars",
+        "metadata.star_7d": "star_7d",
+        "metadata.forks": "forks",
+        "metadata.language": "language"
+      }
+    },
+    {
+      "id": "producthunt",
+      "name": "Product Hunt",
+      "enabled": true,
+      "auth": {
+        "type": "oauth2_client_credentials",
+        "tokenUrl": "https://api.producthunt.com/v2/oauth/token",
+        "clientIdEnv": "PRODUCT_HUNT_API_KEY",
+        "clientSecretEnv": "PRODUCT_HUNT_API_SECRET"
+      },
+      "request": {
+        "url": "https://api.producthunt.com/v2/api/graphql",
+        "method": "POST",
+        "graphql": {
+          "query": "query($first: Int!, $order: PostsOrder!, $postedAfter: DateTime!) { posts(first: $first, order: $order, postedAfter: $postedAfter) { edges { node { name tagline description url website votesCount commentsCount createdAt topics { edges { node { name } } } user { name } } } } }",
+          "variables": { "first": 30, "order": "VOTES" }
+        },
+        "computedVariables": {
+          "postedAfter": { "type": "daysAgo", "days": 7 }
+        }
+      },
+      "response": {
+        "itemsPath": "data.posts.edges",
+        "itemUnwrap": "node"
+      },
+      "filter": {
+        "field": "votesCount",
+        "min": 50
+      },
+      "mapping": {
+        "title": "name",
+        "link": "url",
+        "summary": "tagline",
+        "content": ["tagline", "description"],
+        "author": { "path": "user.name" },
+        "pubDate": "createdAt",
+        "category": { "path": "topics.edges", "map": "node.name", "index": 0 },
+        "tags": { "path": "topics.edges", "map": "node.name" },
+        "engagement.upvotes": "votesCount",
+        "engagement.comments": "commentsCount",
+        "metadata.website": "website"
+      }
+    }
+  ],
   "linkedin": {
     "profilesFile": "/home/vankhoa/projects/aikeytake/workspace/marketing/linkedin_kol_clean.json",
     "enabled": true,

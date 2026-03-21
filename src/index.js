@@ -4,7 +4,7 @@ import rssFetch from './fetchers/rss.js';
 import redditFetch from './fetchers/reddit.js';
 import hnFetch from './fetchers/hackernews.js';
 import linkedinFetch from './fetchers/linkedin.js';
-import productHuntFetch from './fetchers/producthunt.js';
+import apiFetch from './fetchers/api.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -90,17 +90,18 @@ class ContentScraper {
       }
     }
 
-    // Product Hunt
-    if (this.config.producthunt?.enabled) {
-      logger.info('🚀 Fetching from Product Hunt...');
+    // Generic API sources (configured in sources.json apiSources array)
+    for (const source of (this.config.apiSources || [])) {
+      if (!source.enabled) continue;
+      logger.info(`🔌 Fetching from ${source.name}...`);
       try {
-        const phItems = await productHuntFetch(this.config);
-        results.sources.producthunt = phItems.length;
-        await this.saveSourceData('producthunt', phItems);
-        logger.success(`✅ Product Hunt: ${phItems.length} items`);
+        const items = await apiFetch(source);
+        results.sources[source.id] = items.length;
+        await this.saveSourceData(source.id, items);
+        logger.success(`✅ ${source.name}: ${items.length} items`);
       } catch (error) {
-        logger.error(`Product Hunt fetch failed: ${error.message}`);
-        results.sources.producthunt = 0;
+        logger.error(`${source.name} fetch failed: ${error.message}`);
+        results.sources[source.id] = 0;
       }
     }
 
@@ -144,15 +145,14 @@ class ContentScraper {
   async generateCombinedFiles(results) {
     const allItems = [];
 
-    // Load all source files
-    const sources = ['rss', 'reddit', 'hackernews', 'producthunt', 'linkedin'];
-    for (const source of sources) {
-      const filePath = path.join(this.today, `${source}.json`);
-      if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const data = JSON.parse(content);
-        allItems.push(...data.items);
-      }
+    // Load all source files dynamically
+    const sourceFiles = fs.readdirSync(this.today)
+      .filter(f => f.endsWith('.json') && f !== 'all.json' && f !== 'trending.json');
+    for (const file of sourceFiles) {
+      const filePath = path.join(this.today, file);
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const data = JSON.parse(content);
+      allItems.push(...(data.items || []));
     }
 
     // Save all.json
