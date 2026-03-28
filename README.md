@@ -145,6 +145,120 @@ Or for deeper research:
 Read data/$(date +%Y-%m-%d)/all.json and summarize the most important AI developments from the last 24 hours.
 ```
 
+## Browser-Based Sources (Twitter/X & LinkedIn Browser)
+
+Two sources use a real Chrome browser via Playwright to scrape without an API: **Twitter/X** and **LinkedIn Browser**. They share the same browser profile stored at `data/playwright-profile/`.
+
+### One-Time Setup
+
+Run the setup script once to log in and save the browser session:
+
+```bash
+npm run setup:twitter
+```
+
+This opens a real Chrome window. **Log in to both X and LinkedIn** in that window (they share the same profile). Once you're logged in to both, close the window — the session is saved automatically.
+
+> ⚠️ Use a **dedicated scraping account**, not your personal account. Sessions last several weeks. Re-run `npm run setup:twitter` when you see auth errors.
+
+---
+
+### Twitter / X
+
+**Enable in `config/sources.json`:**
+
+```json
+"trendingSources": {
+  "twitter": {
+    "enabled": true,
+    "accounts": ["AndrewYNg", "ylecun", "OpenAI", "AnthropicAI", "karpathy"],
+    "minLikes": 100,
+    "maxTweetsPerAccount": 5,
+    "maxAgeHours": 24,
+    "delayBetweenAccountsMs": 3000
+  }
+}
+```
+
+**Config options:**
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `accounts` | X handles to scrape (without `@`) | `[]` |
+| `minLikes` | Skip tweets below this like count | `0` |
+| `maxTweetsPerAccount` | Max tweets to fetch per account | `10` |
+| `maxAgeHours` | Only include tweets from last N hours | `24` |
+| `delayBetweenAccountsMs` | Base delay between accounts (ms) | `3000` |
+
+**Run:**
+
+```bash
+npm run test:twitter   # isolated test, prints results, no files written
+npm run scrape         # full pipeline
+```
+
+**How it works:**
+- Visits X home feed first, then searches for each account via the search box
+- Clicks the matching result to navigate to the profile
+- Scrolls the timeline and extracts top N tweets
+- Applies a random 20–30s delay between accounts to avoid rate limiting
+- Account visit order is randomised each run
+
+---
+
+### LinkedIn Browser
+
+Scrapes posts from LinkedIn profiles using direct URL navigation to their recent activity page.
+
+**Enable in `config/sources.json`:**
+
+```json
+"linkedin_browser": {
+  "enabled": true,
+  "accounts": ["julienchaumond", "another-slug"],
+  "maxPostsPerAccount": 5,
+  "maxAgeHours": 48,
+  "delayBetweenAccountsMs": 10000
+}
+```
+
+The `accounts` value is the LinkedIn profile slug — the part after `linkedin.com/in/`.
+
+**Config options:**
+
+| Key | Description | Default |
+|-----|-------------|---------|
+| `accounts` | LinkedIn profile slugs to scrape | `[]` |
+| `maxPostsPerAccount` | Max posts to fetch per account | `5` |
+| `maxAgeHours` | Only include posts from last N hours | `48` |
+| `delayBetweenAccountsMs` | Base delay between accounts (ms) | `10000` |
+
+**Run:**
+
+```bash
+npm run test:linkedin   # isolated test, prints results, no files written
+npm run scrape          # full pipeline
+```
+
+**How it works:**
+- Navigates directly to `linkedin.com/in/{slug}/recent-activity/all/`
+- Scrolls to load posts, extracts text, reactions, comments, and time
+- Post URL is constructed from LinkedIn's `data-urn` attribute
+- Account visit order is randomised each run
+
+---
+
+### Output files
+
+| File | Source |
+|------|--------|
+| `data/YYYY-MM-DD/twitter.json` | Twitter/X posts |
+| `data/YYYY-MM-DD/linkedin_browser.json` | LinkedIn browser posts |
+
+Both sources feed into `all.json` and `trending.json` automatically.
+
+---
+
 ## Troubleshooting
 
 **LinkedIn returns 0 items:**
