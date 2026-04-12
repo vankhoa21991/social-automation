@@ -1,6 +1,6 @@
 {
   "name": "@aikeytake/social-automation",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Content research and aggregation tool for AI agents",
   "main": "src/index.js",
   "type": "module",
