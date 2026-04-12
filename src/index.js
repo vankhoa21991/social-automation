@@ -106,54 +106,6 @@ async function scrape(options = {}) {
     }
   }
 
-  // LinkedIn Browser (skip when toSupabase - requires browser)
-  if (config.linkedin_browser?.enabled && !toSupabase) {
-    logger.info('💼 Fetching from LinkedIn (browser)...');
-    try {
-      const { default: linkedinBrowserFetch } = await import('./fetchers/linkedin_browser.js');
-      const items = await linkedinBrowserFetch(config);
-      results.sources.linkedin_browser = items.length;
-      results.items.push(...items);
-      if (saveToFilesystem) await saveSourceData('linkedin_browser', items, today);
-      logger.success(`✅ LinkedIn Browser: ${items.length} items`);
-    } catch (error) {
-      logger.error(`LinkedIn Browser fetch failed: ${error.message}`);
-      results.sources.linkedin_browser = 0;
-    }
-  }
-
-  // Twitter / X (skip when toSupabase - may require auth)
-  if (config.trendingSources?.twitter?.enabled && !toSupabase) {
-    logger.info('🐦 Fetching from Twitter/X...');
-    try {
-      const { default: twitterFetch } = await import('./fetchers/twitter.js');
-      const twitterItems = await twitterFetch(config);
-      results.sources.twitter = twitterItems.length;
-      results.items.push(...twitterItems);
-      if (saveToFilesystem) await saveSourceData('twitter', twitterItems, today);
-      logger.success(`✅ Twitter: ${twitterItems.length} items`);
-    } catch (error) {
-      logger.error(`Twitter fetch failed: ${error.message}`);
-      results.sources.twitter = 0;
-    }
-  }
-
-  // LinkedIn (skip when toSupabase - requires BrightData API)
-  if (config.linkedin?.enabled && !toSupabase) {
-    logger.info('💼 Fetching from LinkedIn...');
-    try {
-      const { default: linkedinFetch } = await import('./fetchers/linkedin.js');
-      const linkedinItems = await linkedinFetch(config);
-      results.sources.linkedin = linkedinItems.length;
-      results.items.push(...linkedinItems);
-      if (saveToFilesystem) await saveSourceData('linkedin', linkedinItems, today);
-      logger.success(`✅ LinkedIn: ${linkedinItems.length} items`);
-    } catch (error) {
-      logger.error(`LinkedIn fetch failed: ${error.message}`);
-      results.sources.linkedin = 0;
-    }
-  }
-
   // Save to Supabase if requested
   if (supabase) {
     await saveToSupabase(supabase, results.items, today);

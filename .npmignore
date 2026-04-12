@@ -4,6 +4,11 @@ data/
 logs/
 *.log
 
+# Ignore browser-based fetchers (require playwright - not in this package)
+src/fetchers/twitter.js
+src/fetchers/linkedin_browser.js
+src/fetchers/linkedin.js
+
 # Ignore test/profile directories
 playwright-profile/
 
