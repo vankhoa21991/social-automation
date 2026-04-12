@@ -9,7 +9,10 @@
     "scrape": "node src/index.js scrape",
     "query": "node src/query.js",
     "queue": "node src/cli.js queue",
-    "test": "node src/test.js"
+    "test": "node src/test.js",
+    "setup:twitter": "node src/setup/twitter-login.js",
+    "test:twitter": "node src/test/twitter.js",
+    "test:linkedin": "node src/test/linkedin.js"
   },
   "keywords": [
     "social-media",
@@ -24,6 +27,7 @@
     "axios": "^1.7.9",
     "cheerio": "^1.0.0",
     "dotenv": "^16.4.7",
+    "playwright": "^1.58.2",
     "rss-parser": "^3.13.0"
   },
   "devDependencies": {

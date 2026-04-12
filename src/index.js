@@ -4,6 +4,9 @@ import rssFetch from './fetchers/rss.js';
 import redditFetch from './fetchers/reddit.js';
 import hnFetch from './fetchers/hackernews.js';
 import linkedinFetch from './fetchers/linkedin.js';
+import apiFetch from './fetchers/api.js';
+import twitterFetch from './fetchers/twitter.js';
+import linkedinBrowserFetch from './fetchers/linkedin_browser.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -89,6 +92,49 @@ class ContentScraper {
       }
     }
 
+    // Generic API sources (configured in sources.json apiSources array)
+    for (const source of (this.config.apiSources || [])) {
+      if (!source.enabled) continue;
+      logger.info(`🔌 Fetching from ${source.name}...`);
+      try {
+        const items = await apiFetch(source);
+        results.sources[source.id] = items.length;
+        await this.saveSourceData(source.id, items);
+        logger.success(`✅ ${source.name}: ${items.length} items`);
+      } catch (error) {
+        logger.error(`${source.name} fetch failed: ${error.message}`);
+        results.sources[source.id] = 0;
+      }
+    }
+
+    // LinkedIn Browser
+    if (this.config.linkedin_browser?.enabled) {
+      logger.info('💼 Fetching from LinkedIn (browser)...');
+      try {
+        const items = await linkedinBrowserFetch(this.config);
+        results.sources.linkedin_browser = items.length;
+        await this.saveSourceData('linkedin_browser', items);
+        logger.success(`✅ LinkedIn Browser: ${items.length} items`);
+      } catch (error) {
+        logger.error(`LinkedIn Browser fetch failed: ${error.message}`);
+        results.sources.linkedin_browser = 0;
+      }
+    }
+
+    // Twitter / X
+    if (this.config.trendingSources?.twitter?.enabled) {
+      logger.info('🐦 Fetching from Twitter/X...');
+      try {
+        const twitterItems = await twitterFetch(this.config);
+        results.sources.twitter = twitterItems.length;
+        await this.saveSourceData('twitter', twitterItems);
+        logger.success(`✅ Twitter: ${twitterItems.length} items`);
+      } catch (error) {
+        logger.error(`Twitter fetch failed: ${error.message}`);
+        results.sources.twitter = 0;
+      }
+    }
+
     // LinkedIn
     if (this.config.linkedin?.enabled) {
       logger.info('💼 Fetching from LinkedIn...');
@@ -129,15 +175,14 @@ class ContentScraper {
   async generateCombinedFiles(results) {
     const allItems = [];
 
-    // Load all source files
-    const sources = ['rss', 'reddit', 'hackernews', 'linkedin'];
-    for (const source of sources) {
-      const filePath = path.join(this.today, `${source}.json`);
-      if (fs.existsSync(filePath)) {
-        const content = fs.readFileSync(filePath, 'utf-8');
-        const data = JSON.parse(content);
-        allItems.push(...data.items);
-      }
+    // Load all source files dynamically
+    const sourceFiles = fs.readdirSync(this.today)
+      .filter(f => f.endsWith('.json') && f !== 'all.json' && f !== 'trending.json');
+    for (const file of sourceFiles) {
+      const filePath = path.join(this.today, file);
+      const content = fs.readFileSync(filePath, 'utf-8');
+      const data = JSON.parse(content);
+      allItems.push(...(data.items || []));
     }
 
     // Save all.json
@@ -249,6 +294,7 @@ async function main() {
   switch (command) {
     case 'scrape':
       await scraper.scrapeAll();
+      process.exit(0);
       break;
 
     default:
