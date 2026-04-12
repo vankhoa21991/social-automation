@@ -3,10 +3,7 @@ import createLogger from './utils/logger.js';
 import rssFetch from './fetchers/rss.js';
 import redditFetch from './fetchers/reddit.js';
 import hnFetch from './fetchers/hackernews.js';
-import linkedinFetch from './fetchers/linkedin.js';
 import apiFetch from './fetchers/api.js';
-import twitterFetch from './fetchers/twitter.js';
-import linkedinBrowserFetch from './fetchers/linkedin_browser.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -113,6 +110,7 @@ async function scrape(options = {}) {
   if (config.linkedin_browser?.enabled && !toSupabase) {
     logger.info('💼 Fetching from LinkedIn (browser)...');
     try {
+      const { default: linkedinBrowserFetch } = await import('./fetchers/linkedin_browser.js');
       const items = await linkedinBrowserFetch(config);
       results.sources.linkedin_browser = items.length;
       results.items.push(...items);
@@ -128,6 +126,7 @@ async function scrape(options = {}) {
   if (config.trendingSources?.twitter?.enabled && !toSupabase) {
     logger.info('🐦 Fetching from Twitter/X...');
     try {
+      const { default: twitterFetch } = await import('./fetchers/twitter.js');
       const twitterItems = await twitterFetch(config);
       results.sources.twitter = twitterItems.length;
       results.items.push(...twitterItems);
@@ -139,10 +138,11 @@ async function scrape(options = {}) {
     }
   }
 
-  // LinkedIn (skip when toSupabase - requires auth)
+  // LinkedIn (skip when toSupabase - requires BrightData API)
   if (config.linkedin?.enabled && !toSupabase) {
     logger.info('💼 Fetching from LinkedIn...');
     try {
+      const { default: linkedinFetch } = await import('./fetchers/linkedin.js');
       const linkedinItems = await linkedinFetch(config);
       results.sources.linkedin = linkedinItems.length;
       results.items.push(...linkedinItems);
