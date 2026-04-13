@@ -101,6 +101,150 @@
       "url": "https://rss.arxiv.org/rss/cs.LG",
       "category": "research-papers",
       "enabled": true
+    },
+    {
+      "name": "Stability AI Blog",
+      "url": "https://stability.ai/news/rss.xml",
+      "category": "company-news",
+      "enabled": true
+    },
+    {
+      "name": "Cohere Blog",
+      "url": "https://cohere.com/blog/rss.xml",
+      "category": "company-news",
+      "enabled": true
+    },
+    {
+      "name": "Mistral AI Blog",
+      "url": "https://mistral.ai/news/rss.xml",
+      "category": "company-news",
+      "enabled": true
+    },
+    {
+      "name": "AI21 Labs Blog",
+      "url": "https://www.ai21.com/blog/rss.xml",
+      "category": "company-news",
+      "enabled": true
+    },
+    {
+      "name": "Baidu Research",
+      "url": "https://research.baidu.com/feed/",
+      "category": "research",
+      "enabled": true
+    },
+    {
+      "name": "Salesforce AI Research",
+      "url": "https://salesforceairesearch.com/blog/rss.xml",
+      "category": "research",
+      "enabled": true
+    },
+    {
+      "name": "Meta AI Blog",
+      "url": "https://ai.meta.com/blog/rss.xml",
+      "category": "company-news",
+      "enabled": true
+    },
+    {
+      "name": "IBM Research AI",
+      "url": "https://research.ibm.com/blog/rss/id/ai",
+      "category": "research",
+      "enabled": true
+    },
+    {
+      "name": "Amazon Science",
+      "url": "https://www.amazon.science/latest-releases/feed",
+      "category": "research",
+      "enabled": true
+    },
+    {
+      "name": "Apple ML Research",
+      "url": "https://machinelearning.apple.com/feed.xml",
+      "category": "research",
+      "enabled": true
+    },
+    {
+      "name": "VentureBeat AI",
+      "url": "https://venturebeat.com/category/ai/feed/",
+      "category": "ai-news",
+      "enabled": true
+    },
+    {
+      "name": "The Verge AI",
+      "url": "https://www.theverge.com/rss/ai-artificial-intelligence/index.xml",
+      "category": "ai-news",
+      "enabled": true
+    },
+    {
+      "name": "Fast Company AI",
+      "url": "https://www.fastcompany.com/technology/artificial-intelligence/rss",
+      "category": "ai-news",
+      "enabled": true
+    },
+    {
+      "name": "Wired AI",
+      "url": "https://www.wired.com/feed/tag/ai/latest/rss",
+      "category": "ai-news",
+      "enabled": true
+    },
+    {
+      "name": "MIT News AI",
+      "url": "https://news.mit.edu/topic/artificial-intelligence-rss",
+      "category": "ai-news",
+      "enabled": true
+    },
+    {
+      "name": "Stanford AI Blog",
+      "url": "https://hai.stanford.edu/news/feed",
+      "category": "research",
+      "enabled": true
+    },
+    {
+      "name": "Last Week in AI",
+      "url": "https://lastweekinai.com/rss/",
+      "category": "newsletter",
+      "enabled": true
+    },
+    {
+      "name": "Import AI",
+      "url": "https://importai.substack.com/feed",
+      "category": "newsletter",
+      "enabled": true
+    },
+    {
+      "name": "The Batch",
+      "url": "https://www.deeplearning.ai/the-batch/feed/",
+      "category": "newsletter",
+      "enabled": true
+    },
+    {
+      "name": "The Neuron",
+      "url": "https://theneuron.ai/feed/",
+      "category": "newsletter",
+      "enabled": true
+    },
+    {
+      "name": "AI News",
+      "url": "https://ai.news/feed",
+      "category": "ai-news",
+      "enabled": true
+    },
+    {
+      "name": "Papers with Code",
+      "url": "https://paperswithcode.com/feed/",
+      "category": "research-papers",
+      "enabled": true
+    },
+    {
+      "name": "Distill.pub",
+      "url": "https://distill.pub/rss.xml",
+      "category": "research-papers",
+      "enabled": true
+    },
+    {
+      "name": "Towards Data Science",
+      "url": "https://towardsdatascience.com/feed",
+      "category": "ai-research",
+      "enabled": true
     }
   ],
   "linkedin_browser": {
