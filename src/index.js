@@ -7,6 +7,7 @@ import apiFetch from './fetchers/api.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import defaultConfig from '../config/sources.js';
 
 dotenv.config();
 
@@ -122,10 +123,9 @@ async function scrape(options = {}) {
   return results;
 }
 
-function loadConfig() {
-  const configPath = path.join(__dirname, '../config/sources.json');
-  const content = fs.readFileSync(configPath, 'utf-8');
-  return JSON.parse(content);
+function loadConfig(optionsConfig) {
+  // Allow config override (for testing or custom sources), otherwise use bundled default
+  return optionsConfig || defaultConfig;
 }
 
 function getDateString() {
@@ -133,20 +133,26 @@ function getDateString() {
 }
 
 async function saveSourceData(source, items, today) {
-  const todayFolder = path.join(__dirname, '../data', today);
-  if (!fs.existsSync(todayFolder)) {
-    fs.mkdirSync(todayFolder, { recursive: true });
+  try {
+    const todayFolder = path.join(__dirname, '../data', today);
+    if (!fs.existsSync(todayFolder)) {
+      fs.mkdirSync(todayFolder, { recursive: true });
+    }
+    const filePath = path.join(todayFolder, `${source}.json`);
+    const data = {
+      date: today,
+      source: source,
+      total_items: items.length,
+      scraped_at: new Date().toISOString(),
+      items: items
+    };
+    fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
+  } catch (err) {
+    // Vercel ephemeral filesystem - ignore write errors when saving to filesystem
+    if (err.code !== 'ENOENT' && err.code !== 'EACCES') {
+      logger.warn(`saveSourceData skipped: ${err.message}`);
+    }
   }
-
-  const filePath = path.join(todayFolder, `${source}.json`);
-  const data = {
-    date: today,
-    source: source,
-    total_items: items.length,
-    scraped_at: new Date().toISOString(),
-    items: items
-  };
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 }
 
 async function saveToSupabase(supabase, items, date) {
@@ -177,66 +183,89 @@ async function saveToSupabase(supabase, items, date) {
 }
 
 async function generateCombinedFiles(results, today) {
-  const todayFolder = path.join(__dirname, '../data', today);
+  try {
+    const todayFolder = path.join(__dirname, '../data', today);
 
-  // Load all source files
-  const allItems = [];
-  const sourceFiles = fs.readdirSync(todayFolder)
-    .filter(f => f.endsWith('.json') && f !== 'all.json' && f !== 'trending.json');
-  for (const file of sourceFiles) {
-    const filePath = path.join(todayFolder, file);
-    const content = fs.readFileSync(filePath, 'utf-8');
-    const data = JSON.parse(content);
-    allItems.push(...(data.items || []));
-  }
-
-  // Save all.json
-  const allData = {
-    date: today,
-    generated_at: new Date().toISOString(),
-    total_items: allItems.length,
-    sources: results.sources,
-    items: allItems
-  };
-  fs.writeFileSync(path.join(todayFolder, 'all.json'), JSON.stringify(allData, null, 2));
-
-  // Generate trending.json (top 20 by score with source diversity)
-  const scoredItems = allItems
-    .filter(item => item.metadata?.score || item.engagement?.upvotes || item.engagement?.points || 0)
-    .map(item => ({ ...item, combined_score: calculateScore(item) }))
-    .sort((a, b) => b.combined_score - a.combined_score);
-
-  // Apply source diversity: max 5 items per source
-  const trendingBySource = {};
-  const finalTrending = [];
-  for (const item of scoredItems) {
-    const source = item.source || 'unknown';
-    if (!trendingBySource[source]) trendingBySource[source] = 0;
-    if (trendingBySource[source] < 5) {
-      trendingBySource[source]++;
-      finalTrending.push(item);
+    // Load all source files
+    const allItems = [];
+    let sourceFiles = [];
+    try {
+      sourceFiles = fs.readdirSync(todayFolder)
+        .filter(f => f.endsWith('.json') && f !== 'all.json' && f !== 'trending.json');
+    } catch {
+      // Folder may not exist - skip loading
+      sourceFiles = [];
     }
-    if (finalTrending.length >= 20) break;
+    for (const file of sourceFiles) {
+      try {
+        const filePath = path.join(todayFolder, file);
+        const content = fs.readFileSync(filePath, 'utf-8');
+        const data = JSON.parse(content);
+        allItems.push(...(data.items || []));
+      } catch {
+        // Skip unreadable files
+      }
+    }
+
+    // Save all.json
+    const allData = {
+      date: today,
+      generated_at: new Date().toISOString(),
+      total_items: allItems.length,
+      sources: results.sources,
+      items: allItems
+    };
+    fs.writeFileSync(path.join(todayFolder, 'all.json'), JSON.stringify(allData, null, 2));
+
+    // Generate trending.json (top 20 by score with source diversity)
+    // RSS items are included even without engagement metrics (they have rich summaries)
+    const scoredItems = allItems
+      .filter(item =>
+        item.metadata?.score ||
+        item.engagement?.upvotes ||
+        item.engagement?.points ||
+        item.source === 'rss'  // include RSS items (they have editorial content, not just engagement)
+      )
+      .map(item => ({ ...item, combined_score: calculateScore(item) }))
+      .sort((a, b) => b.combined_score - a.combined_score);
+
+    // Apply source diversity: max 5 items per source
+    const trendingBySource = {};
+    const finalTrending = [];
+    for (const item of scoredItems) {
+      const source = item.source || 'unknown';
+      if (!trendingBySource[source]) trendingBySource[source] = 0;
+      if (trendingBySource[source] < 5) {
+        trendingBySource[source]++;
+        finalTrending.push(item);
+      }
+      if (finalTrending.length >= 20) break;
+    }
+
+    const trendingData = {
+      date: today,
+      generated_at: new Date().toISOString(),
+      total_items: finalTrending.length,
+      items: finalTrending.map((item, index) => ({
+        rank: index + 1,
+        score: item.combined_score,
+        sources: getItemSources(item),
+        title: item.title,
+        url: item.url || item.link,
+        summary: extractSummary(item),
+        keywords: extractKeywords(item),
+        engagement: item.engagement || item.metadata || {}
+      }))
+    };
+
+    fs.writeFileSync(path.join(todayFolder, 'trending.json'), JSON.stringify(trendingData, null, 2));
+    logger.success(`✅ Generated: trending.json (${finalTrending.length} items)`);
+  } catch (err) {
+    // Vercel ephemeral filesystem - ignore write errors
+    if (err.code !== 'ENOENT' && err.code !== 'EACCES') {
+      logger.warn(`generateCombinedFiles skipped: ${err.message}`);
+    }
   }
-
-  const trendingData = {
-    date: today,
-    generated_at: new Date().toISOString(),
-    total_items: finalTrending.length,
-    items: finalTrending.map((item, index) => ({
-      rank: index + 1,
-      score: item.combined_score,
-      sources: getItemSources(item),
-      title: item.title,
-      url: item.url || item.link,
-      summary: extractSummary(item),
-      keywords: extractKeywords(item),
-      engagement: item.engagement || item.metadata || {}
-    }))
-  };
-
-  fs.writeFileSync(path.join(todayFolder, 'trending.json'), JSON.stringify(trendingData, null, 2));
-  logger.success(`✅ Generated: trending.json (${finalTrending.length} items)`);
 }
 
 function calculateScore(item) {
@@ -245,6 +274,14 @@ function calculateScore(item) {
   if (item.engagement?.points) score += item.engagement.points * 2;
   if (item.engagement?.comments) score += item.engagement.comments * 0.5;
   if (item.metadata?.score) score += item.metadata.score;
+
+  // RSS items have no engagement metrics — use summary length as quality proxy
+  // Longer summaries = more editorial content = higher quality source
+  if (item.source === 'rss' && score === 0) {
+    const summary = item.summary || item.content || '';
+    score = Math.min(summary.length * 2, 500); // cap at 500 to stay below typical engagement scores
+  }
+
   return Math.round(score);
 }
 
