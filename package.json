@@ -1,6 +1,6 @@
 {
   "name": "@aikeytake/social-automation",
-  "version": "2.0.2",
+  "version": "2.1.0",
   "description": "Content research and aggregation tool for AI agents",
   "main": "src/index.js",
   "type": "module",
@@ -24,6 +24,7 @@
   "author": "aikeytake",
   "license": "MIT",
   "dependencies": {
+    "@aikeytake/social-automation": "2.0.5",
     "@supabase/supabase-js": "^2.47.0",
     "axios": "^1.7.9",
     "cheerio": "^1.0.0",

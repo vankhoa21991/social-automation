@@ -12,8 +12,12 @@ class Logger {
   }
 
   ensureLogsDir() {
-    if (!fs.existsSync(LOGS_DIR)) {
-      fs.mkdirSync(LOGS_DIR, { recursive: true });
+    try {
+      if (!fs.existsSync(LOGS_DIR)) {
+        fs.mkdirSync(LOGS_DIR, { recursive: true });
+      }
+    } catch {
+      // Ignore - filesystem may not be writable (e.g., Vercel serverless)
     }
   }
 
@@ -32,8 +36,12 @@ class Logger {
   }
 
   writeToFile(type, message) {
-    const filePath = this.getLogFilePath(type);
-    fs.appendFileSync(filePath, message + '\n');
+    try {
+      const filePath = this.getLogFilePath(type);
+      fs.appendFileSync(filePath, message + '\n');
+    } catch {
+      // Ignore - filesystem may not be writable
+    }
   }
 
   info(message, data) {
