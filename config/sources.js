@@ -51,7 +51,7 @@ export default {
       }
     }
   ],
-  linkedin: { profilesFile: "/home/vankhoa/projects/aikeytake/workspace/marketing/linkedin_kol_clean.json", enabled: true, batchSize: 8, budgetPerRun: 25, checkIntervalHours: 24, timeRange: "w", resultsPerBatch: 10, enrichContent: true, enrichConcurrency: 5 },
+  linkedin: { profilesFile: process.env.LINKEDIN_KOL_PROFILES_FILE || "./data/linkedin_kol_sample.json", enabled: true, batchSize: 8, budgetPerRun: 25, checkIntervalHours: 24, timeRange: "w", resultsPerBatch: 10, enrichContent: true, enrichConcurrency: 5 },
   youtube: { channels: [{ name: "Andrej Karpathy", channelId: "UC之以A5_BH8q-8v6Fn4qF5A", enabled: false }, { name: "Yannic Kilcher", channelId: "UC媒介ucH6r6tiKnM2LTC1cw", enabled: false }], enabled: false },
   keywords: {
     primary: ["artificial intelligence", "machine learning", "deep learning", "LLM", "GPT", "Claude", "transformer", "neural network", "AGI", "AI research"],
