@@ -1,6 +1,8 @@
 # Social Automation
 
-AI/tech news aggregator that scrapes multiple sources and outputs structured JSON for AI agents to consume.
+Scrape Twitter and LinkedIn without API keys — just log in once and cache the session. Combines 17+ sources into ranked, deduplicated JSON that AI agents can consume directly.
+
+No API keys required for Twitter or LinkedIn. No rate limits. No monthly fees.
 
 ## What It Does
 
