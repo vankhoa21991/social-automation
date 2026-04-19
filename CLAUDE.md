@@ -4,20 +4,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Content research and aggregation tool that scrapes AI/tech news from multiple sources and stores structured JSON for AI agents to consume. The project has three main components:
-
-1. **Content Scraping** - Scrapes RSS feeds, Reddit, Hacker News, and LinkedIn
-2. **Newsletter System** - Email newsletter management with subscriber tracking
-3. **Writing Agents** - AI-powered iterative writing using LangChain and Claude API
-
----
+Content research and aggregation tool that scrapes AI/tech news from multiple sources and stores structured JSON for AI agents to consume. This is a Node.js CLI tool (not a web application).
 
 ## Common Commands
 
 ### Content Scraping
 
 ```bash
-# Scrape all sources (RSS, Reddit, Hacker News, LinkedIn)
+# Scrape all sources (RSS, Reddit, Hacker News, LinkedIn, Twitter)
 npm run scrape
 
 # Alternative:
@@ -25,40 +19,38 @@ node src/index.js scrape
 ```
 
 Output saved to `data/YYYY-MM-DD/`:
-- `trending.json` - Top 20 trending items ranked by engagement
+- `trending.json` - Top 20 trending items ranked by engagement (max 5 per source)
 - `all.json` - All items combined from all sources
-- `rss.json`, `reddit.json`, `hackernews.json`, `linkedin.json` - Per-source data
+- `{source}.json` - Per-source data (rss, reddit, hackernews, linkedin, twitter, linkedin_browser, api)
 
-### Newsletter Management
-
-```bash
-# Show newsletter statistics
-npm run newsletter:stats
-
-# Add a subscriber
-npm run newsletter:add user@example.com "John Doe"
-
-# List all newsletters
-npm run newsletter
-
-# Generate newsletter from trending data (basic)
-npm run newsletter:generate 2026-03-22
-
-# Generate AI-enhanced newsletter (using writing agents)
-npm run newsletter:generate:enhanced 2026-03-22
-
-# Send newsletter
-npm run newsletter:send <newsletter-id>
-
-# Test send to a single email
-npm run newsletter:test <newsletter-id> test@example.com
-```
+**Scoring:** Items ranked by engagement (upvotes + points*2 + comments*0.5). RSS items score by summary length. Source diversity: max 5 items per source.
 
 ### Query Data
 
 ```bash
 # Interactive query mode
 npm run query
+
+# Query subcommands:
+npm run query trending           # Show trending items
+npm run query topic GPT          # Search by topic
+npm run query fresh 6            # Items from last N hours
+npm run query search "AI"       # Search content
+npm run query source reddit      # Get by source
+npm run query compare 2026-04-01 2026-04-02  # Compare two days
+```
+
+### Browser-Based Sources (Playwright)
+
+```bash
+# Setup Twitter/LinkedIn login session (one-time)
+npm run setup:twitter
+
+# Test Twitter scraper (isolated, no files written)
+npm run test:twitter
+
+# Test LinkedIn browser scraper (isolated, no files written)
+npm run test:linkedin
 ```
 
 ---
@@ -70,66 +62,27 @@ npm run query
 ```
 config/sources.json (configuration)
         ↓
-src/index.js (ContentScraper orchestrator)
+src/index.js (orchestrator)
         ↓
 src/fetchers/
-├── rss.js          # 17 RSS feeds (OpenAI, Anthropic, Claude Blog, arXiv, etc.)
-├── reddit.js       # 7 AI subreddits (min 100 upvotes)
-├── hackernews.js   # AI-filtered stories (min 50 points)
-└── linkedin.js     # LinkedIn KOL posts via BrightData SERP
+├── rss.js              # 17 RSS feeds
+├── reddit.js           # 7 AI subreddits (min 100 upvotes)
+├── hackernews.js       # HN AI-filtered stories (min 50 points)
+├── linkedin.js         # LinkedIn KOL via BrightData SERP
+├── linkedin_browser.js # LinkedIn via Playwright browser
+├── twitter.js          # Twitter/X via Playwright browser
+└── api.js              # Generic REST/GraphQL API sources
         ↓
 data/YYYY-MM-DD/*.json (daily output)
 ```
 
-### Newsletter System
+### Key Files
 
-```
-src/newsletter/
-├── api/newsletter-service.js    # Main service class
-├── models/
-│   ├── subscriber.js             # Subscriber data model
-│   └── newsletter.js             # Newsletter model with generateIterative()
-├── utils/
-│   ├── email-sender.js           # SMTP/SendGrid email sending
-│   └── helpers.js                # Helper functions
-├── cli.js                         # CLI interface
-└── data/
-    ├── subscribers.json           # Subscriber storage
-    └── newsletters.json           # Newsletter storage
-```
-
-### Writing Agents (LangChain + Claude API)
-
-```
-src/writing-agents/
-├── core/
-│   └── iterative-workflow.js     # Writer ↔ Critic orchestration loop
-├── agents/
-│   ├── writer-agent.js           # Generates/revises newsletter content
-│   └── critic-agent.js           # Reviews content with 1-10 quality scoring
-├── models/
-│   ├── draft.js                  # Tracks newsletter versions and history
-│   └── critique.js               # Stores feedback and quality metrics
-├── utils/
-│   ├── prompt-templates.js       # Current agent prompts
-│   ├── prompt-templates-improved.js  # Improved prompts (ready for testing)
-│   └── cache-manager.js          # Response caching for cost reduction
-└── config/
-    └── agent-config.js           # Configuration & cost estimation
-```
-
-**Writing Agent Workflow:**
-```
-Articles (from trending.json)
-    ↓
-Writer Agent → Initial Draft
-    ↓
-Critic Agent → Review & Score (6 criteria: accuracy, clarity, value, completeness, voice, citations)
-    ↓
-Quality Check → Is score ≥ threshold? (default: 8/10)
-    ↓ if NO:  Writer Agent → Revise based on critique → loop back to Critic
-    ↓ if YES: Finalize → Newsletter created
-```
+- `src/index.js` - Main orchestrator, exports `scrape()` function
+- `src/query.js` - DataQuery class for reading/analyzing scraped data
+- `src/cli.js` - CLI for queue/drafts/published management
+- `src/utils/logger.js` - Color-coded logger
+- `src/utils/storage.js` - JSON file storage utility
 
 ---
 
@@ -137,33 +90,33 @@ Quality Check → Is score ≥ threshold? (default: 8/10)
 
 ### Source Configuration (`config/sources.json`)
 
-- **rssFeeds**: 17 RSS sources with categories (ai-news, ai-research, company-news, etc.)
+- **rssFeeds**: 17 RSS sources with categories (ai-news, company-news, research, etc.)
 - **trendingSources.reddit**: 7 AI subreddits with minScore and maxAge filters
 - **trendingSources.hackernews**: AI keyword filtering with minPoints threshold
-- **linkedin**: KOL profiles file path, batch size, enrichment settings
+- **trendingSources.twitter**: X accounts, minLikes, maxTweetsPerAccount (disabled by default)
+- **linkedin_browser**: Profile slugs, maxPostsPerAccount, maxAgeHours
+- **linkedin**: KOL profiles file path, batch size, enrichment settings (via BrightData)
+- **apiSources**: Generic REST/GraphQL sources with JSONPath mappings
 
 ### Environment Variables (`.env`)
 
 ```bash
 # Content scraping
-BRIGHTDATA_API_KEY=...         # Required for LinkedIn scraping
+BRIGHTDATA_API_KEY=...         # Required for LinkedIn KOL scraping
 BRIGHTDATA_ZONE=mcp_unlocker   # BrightData zone name
 
-# Newsletter
-EMAIL_PROVIDER=smtp            # smtp, sendgrid, or console
-SMTP_HOST=smtp.gmail.com
-SMTP_PORT=587
-SMTP_SECURE=false
-SMTP_USER=your-email@gmail.com
-SMTP_PASS=your-app-password
-
-# Writing Agents
-WRITING_AGENTS_ENABLED=true
-WRITING_AGENTS_MAX_ITERATIONS=3
-WRITING_AGENTS_QUALITY_THRESHOLD=8
-WRITING_AGENTS_MODEL=claude-3-5-sonnet-20241022
-ANTHROPIC_API_KEY=sk-ant-...   # Required for writing agents
+# Browser sources (Twitter/LinkedIn via Playwright)
+# Uses shared Playwright profile at data/playwright-profile/
 ```
+
+### LinkedIn KOL Configuration
+
+LinkedIn KOL profiles stored at:
+```
+/home/vankhoa/projects/aikeytake/workspace/marketing/linkedin_kol_clean.json
+```
+
+Path configured in `config/sources.json` under `linkedin.profilesFile`.
 
 ---
 
@@ -174,20 +127,20 @@ ANTHROPIC_API_KEY=sk-ant-...   # Required for writing agents
 ```json
 {
   "id": "unique_id",
-  "source": "rss|reddit|hackernews|linkedin",
+  "source": "rss|reddit|hackernews|linkedin|twitter|api",
   "sourceName": "Source Name",
   "category": "ai-news|company-news|research",
   "title": "Article Title",
   "url": "https://...",
   "summary": "Content summary...",
   "content": "Full content...",
-  "pubDate": "2026-03-22T10:00:00Z",
+  "pubDate": "2026-04-19T10:00:00Z",
   "age_hours": 24,
   "engagement": {
     "upvotes": 4500,
     "comments": 823
   },
-  "scraped_at": "2026-03-22T10:00:00Z"
+  "scraped_at": "2026-04-19T10:00:00Z"
 }
 ```
 
@@ -210,47 +163,23 @@ ANTHROPIC_API_KEY=sk-ant-...   # Required for writing agents
 
 ## Important Design Decisions
 
-1. **No Vercel Deployment** - This is a Node.js CLI tool, not a web application. Uses `dotenv` for config, not Vercel env vars.
+1. **No Vercel Deployment** - This is a Node.js CLI tool, not a web application. Uses `dotenv` for config.
 
-2. **Daily Data Organization** - Each scrape run creates a new `data/YYYY-MM-DD/` folder. Output files are overwritten on re-scrape for the same date.
+2. **Daily Data Organization** - Each scrape run creates/overwrites `data/YYYY-MM-DD/` folder.
 
-3. **Quality Threshold for Writing Agents** - Default is 8/10. Agent loop terminates early when threshold is met to save API costs. Max iterations: 3.
+3. **ES Modules** - Project uses `"type": "module"` in package.json. All imports use `.js` extensions.
 
-4. **BrightData for LinkedIn** - LinkedIn scraping requires BrightData SERP API with zone `mcp_unlocker`. KOL profiles loaded from external path.
+4. **Playwright for Twitter/LinkedIn** - Browser-based sources share a profile at `data/playwright-profile/`. Run `npm run setup:twitter` once to authenticate.
 
-5. **Cache Manager** - Writing agents cache LLM responses for 7 days (TTL) to reduce API costs. ~70% cache hit rate expected.
+5. **BrightData for LinkedIn KOL** - Requires BrightData SERP API with zone `mcp_unlocker`.
 
-6. **ES Modules** - Project uses `"type": "module"` in package.json. All imports use `.js` extensions.
-
----
-
-## Testing Writing Agents
-
-The project has two prompt template sets for writing agents:
-
-1. **Current**: `prompt-templates.js` - Basic prompts
-2. **Improved**: `prompt-templates-improved.js` - Enhanced with examples, rubrics, anti-patterns
-
-To test improved prompts, update the import in agents/writer-agent.js and agents/critic-agent.js from `'./prompt-templates.js'` to `'./prompt-templates-improved.js'`.
+6. **Supabase Support** - `scrape()` accepts `toSupabase` option to save results to Supabase database.
 
 ---
 
-## Key Dependencies
+## Dependencies
 
 - `rss-parser` - RSS feed parsing
 - `axios` - HTTP requests
 - `cheerio` - HTML parsing
-- `nodemailer` - Email sending
-- `@langchain/anthropic` - LangChain integration with Claude
-- `@langchain/langgraph` - Agent workflow orchestration
-
----
-
-## LinkedIn KOL Configuration
-
-LinkedIn KOL (Key Opinion Leader) profiles are stored in an external file:
-```
-/home/vankhoa/projects/aikeytake/workspace/marketing/linkedin_kol_clean.json
-```
-
-This path is configured in `config/sources.json` under `linkedin.profilesFile`.
+- `@supabase/supabase-js` - Supabase integration (optional)
