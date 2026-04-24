@@ -36,10 +36,10 @@
     "axios": "^1.7.9",
     "cheerio": "^1.0.0",
     "dotenv": "^16.4.7",
+    "pm2": "^6.0.14",
     "rss-parser": "^3.13.0"
   },
   "devDependencies": {
-    "@types/node": "^22.13.5",
-    "pm2": "^6.0.14"
+    "@types/node": "^22.13.5"
   }
 }
