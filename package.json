@@ -13,7 +13,14 @@
     "setup:twitter": "node src/setup/twitter-login.js",
     "test:twitter": "node src/test/twitter.js",
     "test:linkedin": "node src/test/linkedin.js",
-    "test:retry": "node src/test/retry.js"
+    "test:retry": "node src/test/retry.js",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:stop": "pm2 stop social-scrape",
+    "pm2:restart": "pm2 restart social-scrape",
+    "pm2:logs": "pm2 logs social-scrape",
+    "pm2:status": "pm2 status",
+    "pm2:save": "pm2 save",
+    "pm2:setup": "pm2 start ecosystem.config.cjs && pm2 save && pm2 startup"
   },
   "keywords": [
     "social-media",
@@ -33,6 +40,7 @@
     "rss-parser": "^3.13.0"
   },
   "devDependencies": {
-    "@types/node": "^22.13.5"
+    "@types/node": "^22.13.5",
+    "pm2": "^6.0.14"
   }
 }
