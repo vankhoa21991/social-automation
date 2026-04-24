@@ -32,7 +32,6 @@
   "author": "aikeytake",
   "license": "MIT",
   "dependencies": {
-    "@aikeytake/social-automation": "2.0.5",
     "@supabase/supabase-js": "^2.47.0",
     "axios": "^1.7.9",
     "cheerio": "^1.0.0",
