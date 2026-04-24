@@ -4,6 +4,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import createLogger from '../utils/logger.js';
+import { withRetry } from '../utils/retry.js';
 
 const logger = createLogger('LinkedInFetcher');
 
@@ -74,7 +75,10 @@ export default async function linkedinFetch(config) {
 
   for (const batch of batches) {
     try {
-      let posts = await fetchBatchWithRetry(batch, state, cfg, BRIGHTDATA_API_KEY, BRIGHTDATA_ZONE);
+      let posts = await withRetry(
+        () => fetchBatch(batch, state, cfg, BRIGHTDATA_API_KEY, BRIGHTDATA_ZONE),
+        { retries: 3, baseDelay: 2000, maxDelay: 15000, onRetry: (a, t) => logger.warn(`Batch retry ${a}/${t}`) }
+      );
 
       // Enrich posts with full content + engagement by scraping each post URL
       if (cfg.enrichContent && posts.length > 0) {
@@ -105,19 +109,6 @@ export default async function linkedinFetch(config) {
   const remaining = dueKols.length - checked;
   logger.success(`LinkedIn: ${allPosts.length} new posts (${checked} KOLs checked, ${remaining} still due)`);
   return allPosts;
-}
-
-async function fetchBatchWithRetry(batch, state, cfg, apiKey, zone, retries = 1) {
-  try {
-    return await fetchBatch(batch, state, cfg, apiKey, zone);
-  } catch (err) {
-    if (retries > 0 && (err.code === 'ECONNABORTED' || err.message?.includes('timeout'))) {
-      logger.warn(`Batch timed out, retrying... (${retries} left)`);
-      await new Promise(r => setTimeout(r, 2000));
-      return fetchBatchWithRetry(batch, state, cfg, apiKey, zone, retries - 1);
-    }
-    throw err;
-  }
 }
 
 async function fetchBatch(batch, state, cfg, apiKey, zone) {
@@ -199,13 +190,13 @@ async function enrichPosts(posts, cfg, apiKey, zone) {
 
 async function enrichPost(post, apiKey, zone) {
   try {
-    const response = await axios.post(
-      BRIGHTDATA_API_URL,
-      { zone, url: post.url, format: 'raw', data_format: 'markdown' },
-      {
-        headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
-        timeout: 40000,
-      }
+    const response = await withRetry(
+      () => axios.post(
+        BRIGHTDATA_API_URL,
+        { zone, url: post.url, format: 'raw', data_format: 'markdown' },
+        { headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' }, timeout: 40000 }
+      ),
+      { retries: 2, baseDelay: 2000, onRetry: (a, t) => logger.debug(`Enrich retry ${a}/${t} for ${post.sourceName}`) }
     );
 
     const markdown = typeof response.data === 'string' ? response.data : JSON.stringify(response.data);

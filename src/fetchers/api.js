@@ -1,6 +1,7 @@
 import axios from 'axios';
 import crypto from 'crypto';
 import createLogger from '../utils/logger.js';
+import { withRetry } from '../utils/retry.js';
 
 const logger = createLogger('APIFetcher');
 
@@ -181,27 +182,34 @@ export default async function apiFetch(source) {
   try {
     let data;
 
+    const onRetry = (a, t) => logger.warn(`[${source.id}] request retry ${a}/${t}`);
+
     if (request.graphql) {
       const variables = { ...request.graphql.variables, ...computedVars };
-      const res = await axios.post(
-        request.url,
-        { query: request.graphql.query, variables },
-        { headers, timeout: 30000 }
+      const res = await withRetry(
+        () => axios.post(request.url, { query: request.graphql.query, variables }, { headers, timeout: 30000 }),
+        { retries: 3, baseDelay: 1000, onRetry }
       );
       data = res.data;
     } else if (request.method === 'POST') {
-      const res = await axios.post(request.url, request.body || {}, {
-        headers,
-        params: { ...request.params, ...computedVars },
-        timeout: 15000,
-      });
+      const res = await withRetry(
+        () => axios.post(request.url, request.body || {}, {
+          headers,
+          params: { ...request.params, ...computedVars },
+          timeout: 15000,
+        }),
+        { retries: 3, baseDelay: 1000, onRetry }
+      );
       data = res.data;
     } else {
-      const res = await axios.get(request.url, {
-        headers,
-        params: { ...request.params, ...computedVars },
-        timeout: 15000,
-      });
+      const res = await withRetry(
+        () => axios.get(request.url, {
+          headers,
+          params: { ...request.params, ...computedVars },
+          timeout: 15000,
+        }),
+        { retries: 3, baseDelay: 1000, onRetry }
+      );
       data = res.data;
     }
 

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import createLogger from '../utils/logger.js';
+import { withRetry } from '../utils/retry.js';
 
 const logger = createLogger('RedditFetcher');
 
@@ -20,9 +21,12 @@ export default async function redditFetch(config) {
 
   for (const subreddit of subreddits) {
     try {
-      const response = await axios.get(
-        `https://www.reddit.com/r/${subreddit}/hot.json?limit=50`,
-        { headers: { 'User-Agent': 'AI-Keytake-Scraper/1.0' } }
+      const response = await withRetry(
+        () => axios.get(
+          `https://www.reddit.com/r/${subreddit}/hot.json?limit=50`,
+          { headers: { 'User-Agent': 'AI-Keytake-Scraper/1.0' } }
+        ),
+        { retries: 3, baseDelay: 1000, onRetry: (a, t) => logger.warn(`r/${subreddit} retry ${a}/${t}`) }
       );
 
       const posts = response.data.data.children;
