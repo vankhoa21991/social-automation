@@ -207,19 +207,28 @@ async function generateCombinedFiles(results, today) {
       }
     }
 
+    // Filter malformed items before ranking
+    const validItems = allItems.filter(item => {
+      if (!validateItem(item)) {
+        logger.warn(`Dropped malformed item: ${String(item?.title || item?.url || JSON.stringify(item)).substring(0, 80)}`);
+        return false;
+      }
+      return true;
+    });
+
     // Save all.json
     const allData = {
       date: today,
       generated_at: new Date().toISOString(),
-      total_items: allItems.length,
+      total_items: validItems.length,
       sources: results.sources,
-      items: allItems
+      items: validItems
     };
     fs.writeFileSync(path.join(todayFolder, 'all.json'), JSON.stringify(allData, null, 2));
 
     // Generate trending.json (top 20 by score with source diversity)
     // RSS items are included even without engagement metrics (they have rich summaries)
-    const scoredItems = allItems
+    const scoredItems = validItems
       .filter(item =>
         item.metadata?.score ||
         item.engagement?.upvotes ||
@@ -266,6 +275,15 @@ async function generateCombinedFiles(results, today) {
       logger.warn(`generateCombinedFiles skipped: ${err.message}`);
     }
   }
+}
+
+function validateItem(item) {
+  if (!item || typeof item !== 'object') return false;
+  if (!item.title || typeof item.title !== 'string' || !item.title.trim()) return false;
+  const url = item.url || item.link;
+  if (!url || typeof url !== 'string' || !url.trim()) return false;
+  if (!item.source || typeof item.source !== 'string') return false;
+  return true;
 }
 
 function calculateScore(item) {
