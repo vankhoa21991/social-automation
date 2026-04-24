@@ -20,7 +20,8 @@
     "pm2:logs": "pm2 logs social-scrape",
     "pm2:status": "pm2 status",
     "pm2:save": "pm2 save",
-    "pm2:setup": "pm2 start ecosystem.config.cjs && pm2 save && pm2 startup"
+    "pm2:setup": "pm2 start ecosystem.config.cjs && pm2 save && pm2 startup",
+    "dashboard": "node src/dashboard.js"
   },
   "keywords": [
     "social-media",
