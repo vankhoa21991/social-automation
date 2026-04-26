@@ -1,6 +1,7 @@
 import Parser from 'rss-parser';
 import crypto from 'crypto';
 import createLogger from '../utils/logger.js';
+import { withRetry } from '../utils/retry.js';
 
 const logger = createLogger('RSSFetcher');
 const parser = new Parser();
@@ -15,7 +16,10 @@ export default async function rssFetch(config) {
 
   for (const feed of feeds) {
     try {
-      const parsed = await parser.parseURL(feed.url);
+      const parsed = await withRetry(
+        () => parser.parseURL(feed.url),
+        { retries: 3, baseDelay: 1000, onRetry: (a, t) => logger.warn(`${feed.name} retry ${a}/${t}`) }
+      );
 
       for (const item of parsed.items) {
         const pubDate = new Date(item.pubDate);

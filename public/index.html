@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Trending Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/wordcloud@1.2.2/src/wordcloud2.js"></script>
+  <style>
+    body { background: #0f172a; color: #e2e8f0; }
+    .tab-btn { transition: all 0.15s; }
+    .tab-btn.active { background: #3b82f6; color: #fff; }
+    .tab-btn:not(.active):hover { background: #1e293b; }
+    .card { background: #1e293b; border: 1px solid #334155; }
+    .source-badge { font-size: 0.65rem; }
+    #wc-canvas { width: 100%; height: 500px; }
+    .score-bar-bg { background: #0f172a; }
+    .score-bar { background: linear-gradient(90deg, #3b82f6, #8b5cf6); }
+    table { border-collapse: collapse; width: 100%; }
+    th { background: #1e293b; position: sticky; top: 0; z-index: 1; }
+    tr:hover td { background: #1e293b55; }
+    td, th { border-bottom: 1px solid #1e293b; }
+    .tag { background: #1e40af22; border: 1px solid #3b82f644; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+  </style>
+</head>
+<body class="min-h-screen">
+  <div class="max-w-7xl mx-auto px-4 py-6">
+    <!-- Header -->
+    <div class="mb-6 flex items-center justify-between">
+      <div>
+        <h1 class="text-2xl font-bold text-white">AI Content Dashboard</h1>
+        <p id="date-label" class="text-slate-400 text-sm mt-1">Loading...</p>
+      </div>
+      <div id="stats" class="text-right text-sm text-slate-400"></div>
+    </div>
+
+    <!-- Tabs -->
+    <div class="flex gap-2 mb-6">
+      <button class="tab-btn active px-4 py-2 rounded-lg text-sm font-medium" data-tab="trending">Trending</button>
+      <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium" data-tab="all">All Items</button>
+      <button class="tab-btn px-4 py-2 rounded-lg text-sm font-medium" data-tab="wordcloud">Word Cloud</button>
+    </div>
+
+    <!-- Trending Tab -->
+    <div id="tab-trending" class="tab-content">
+      <div id="trending-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4"></div>
+    </div>
+
+    <!-- All Items Tab -->
+    <div id="tab-all" class="tab-content hidden">
+      <div class="mb-4 flex gap-3">
+        <input id="search-input" type="text" placeholder="Search titles, summaries..."
+          class="flex-1 bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-blue-500" />
+        <select id="source-filter" class="bg-slate-800 border border-slate-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-blue-500">
+          <option value="">All sources</option>
+        </select>
+      </div>
+      <div class="card rounded-xl overflow-auto" style="max-height: 70vh;">
+        <table>
+          <thead>
+            <tr>
+              <th class="px-4 py-3 text-left text-xs text-slate-400 font-semibold w-8">#</th>
+              <th class="px-4 py-3 text-left text-xs text-slate-400 font-semibold">Title</th>
+              <th class="px-4 py-3 text-left text-xs text-slate-400 font-semibold">Source</th>
+              <th class="px-4 py-3 text-left text-xs text-slate-400 font-semibold">Score</th>
+              <th class="px-4 py-3 text-left text-xs text-slate-400 font-semibold">Engagement</th>
+            </tr>
+          </thead>
+          <tbody id="all-table-body"></tbody>
+        </table>
+      </div>
+      <p id="all-count" class="text-xs text-slate-500 mt-2"></p>
+    </div>
+
+    <!-- Word Cloud Tab -->
+    <div id="tab-wordcloud" class="tab-content hidden">
+      <div class="card rounded-xl p-4">
+        <div class="flex items-center justify-between mb-4">
+          <div class="flex gap-3 text-sm">
+            <label class="text-slate-400">Source:
+              <select id="wc-source" class="ml-1 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500">
+                <option value="all">All</option>
+              </select>
+            </label>
+            <label class="text-slate-400">Field:
+              <select id="wc-field" class="ml-1 bg-slate-800 border border-slate-600 rounded px-2 py-1 text-white text-xs focus:outline-none focus:border-blue-500">
+                <option value="title">Titles</option>
+                <option value="summary">Summaries</option>
+                <option value="both" selected>Both</option>
+                <option value="tags">Tags/Keywords</option>
+              </select>
+            </label>
+          </div>
+          <button id="wc-refresh" class="text-xs bg-blue-600 hover:bg-blue-700 text-white px-3 py-1 rounded-lg">Refresh</button>
+        </div>
+        <canvas id="wc-canvas"></canvas>
+        <p class="text-xs text-slate-500 mt-3">Top words by frequency (stopwords excluded)</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ---- State ----
+    let trendingData = null;
+    let allData = null;
+
+    // ---- Tabs ----
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
+        btn.classList.add('active');
+        document.getElementById(`tab-${btn.dataset.tab}`).classList.remove('hidden');
+        if (btn.dataset.tab === 'wordcloud' && allData) renderWordCloud();
+      });
+    });
+
+    // ---- Source badge colors ----
+    const SOURCE_COLORS = {
+      reddit: 'bg-orange-900 text-orange-300',
+      hackernews: 'bg-yellow-900 text-yellow-300',
+      rss: 'bg-green-900 text-green-300',
+      goodailist: 'bg-purple-900 text-purple-300',
+      producthunt: 'bg-red-900 text-red-300',
+      twitter: 'bg-sky-900 text-sky-300',
+      linkedin: 'bg-blue-900 text-blue-300',
+    };
+    function sourceBadge(src) {
+      const cls = SOURCE_COLORS[src] || 'bg-slate-700 text-slate-300';
+      return `<span class="source-badge ${cls} px-2 py-0.5 rounded-full font-medium">${src}</span>`;
+    }
+
+    // ---- Engagement display ----
+    function engagementStr(eng) {
+      if (!eng) return '—';
+      const parts = [];
+      if (eng.upvotes) parts.push(`▲ ${eng.upvotes.toLocaleString()}`);
+      if (eng.points) parts.push(`● ${eng.points.toLocaleString()}`);
+      if (eng.comments) parts.push(`💬 ${eng.comments.toLocaleString()}`);
+      return parts.join(' ') || '—';
+    }
+
+    // ---- Trending Tab ----
+    function renderTrending(items) {
+      const maxScore = items[0]?.score || 1;
+      const grid = document.getElementById('trending-grid');
+      grid.innerHTML = items.map(item => {
+        const src = (item.sources || [])[0] || 'unknown';
+        const pct = Math.round((item.score / maxScore) * 100);
+        const kws = (item.keywords || []).slice(0, 4).map(k =>
+          `<span class="tag text-xs px-2 py-0.5 rounded-full text-blue-300">${k}</span>`
+        ).join('');
+        const summary = item.summary
+          ? `<p class="text-slate-400 text-xs mt-2 line-clamp-2">${escapeHtml(stripHtml(item.summary))}</p>` : '';
+        return `
+          <div class="card rounded-xl p-4 flex flex-col gap-2 hover:border-slate-400 transition-colors">
+            <div class="flex items-start justify-between gap-2">
+              <span class="text-2xl font-bold text-slate-600">#${item.rank}</span>
+              ${sourceBadge(src)}
+            </div>
+            <a href="${escapeHtml(item.url)}" target="_blank" class="text-white font-semibold text-sm hover:text-blue-400 leading-snug">${escapeHtml(item.title)}</a>
+            ${summary}
+            <div>
+              <div class="flex gap-1 flex-wrap mb-2">${kws}</div>
+              <div class="score-bar-bg rounded-full h-1.5 mb-1">
+                <div class="score-bar h-1.5 rounded-full" style="width:${pct}%"></div>
+              </div>
+              <div class="flex justify-between text-xs text-slate-500">
+                <span>${engagementStr(item.engagement)}</span>
+                <span class="text-blue-400 font-mono">${item.score.toLocaleString()} pts</span>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    // ---- All Items Tab ----
+    let allItems = [];
+    function renderAllTable(items) {
+      const body = document.getElementById('all-table-body');
+      document.getElementById('all-count').textContent = `Showing ${items.length} items`;
+      if (!items.length) { body.innerHTML = '<tr><td colspan="5" class="px-4 py-6 text-center text-slate-500">No results</td></tr>'; return; }
+      body.innerHTML = items.map((item, i) => {
+        const score = item.metadata?.score || 0;
+        return `<tr>
+          <td class="px-4 py-3 text-slate-500 text-xs">${i + 1}</td>
+          <td class="px-4 py-3 max-w-md">
+            <a href="${escapeHtml(item.link || item.url || '#')}" target="_blank" class="text-sm text-white hover:text-blue-400 font-medium line-clamp-1">${escapeHtml(item.title)}</a>
+            ${item.summary ? `<p class="text-xs text-slate-500 mt-0.5 line-clamp-1">${escapeHtml(stripHtml(item.summary))}</p>` : ''}
+          </td>
+          <td class="px-4 py-3">${sourceBadge(item.source)}</td>
+          <td class="px-4 py-3 text-xs font-mono text-purple-300">${score ? score.toLocaleString() : '—'}</td>
+          <td class="px-4 py-3 text-xs text-slate-400">${engagementStr(item.engagement)}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    function filterAll() {
+      const q = document.getElementById('search-input').value.toLowerCase();
+      const src = document.getElementById('source-filter').value;
+      const filtered = allItems.filter(item => {
+        const matchSrc = !src || item.source === src;
+        const text = `${item.title} ${item.summary || ''} ${item.content || ''}`.toLowerCase();
+        return matchSrc && (!q || text.includes(q));
+      });
+      renderAllTable(filtered);
+    }
+
+    document.getElementById('search-input').addEventListener('input', filterAll);
+    document.getElementById('source-filter').addEventListener('change', filterAll);
+
+    // ---- Word Cloud ----
+    const STOPWORDS = new Set([
+      'a','an','the','and','or','but','in','on','at','to','for','of','with','by','from','up',
+      'about','into','through','during','before','after','above','below','between','out','off',
+      'over','under','again','then','once','here','there','when','where','why','how','all',
+      'both','each','few','more','most','other','some','such','no','not','only','same','so',
+      'than','too','very','can','will','just','should','now','its','it','is','are','was','were',
+      'be','been','being','have','has','had','do','does','did','would','could','may','might',
+      'shall','this','that','these','those','i','you','he','she','we','they','what','which',
+      'who','whom','their','our','your','his','her','my','me','him','us','them','s','t','re',
+      've','ll','d','m','new','use','using','via','get','make','also','like','one','two','three',
+      'first','second','http','https','www','com','org','net','io','ai','tech','open','source',
+    ]);
+
+    function tokenize(text) {
+      return text.toLowerCase()
+        .replace(/https?:\/\/\S+/g, '')
+        .replace(/[^a-z\s'-]/g, ' ')
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !STOPWORDS.has(w));
+    }
+
+    function buildWordFreq(items, field, srcFilter) {
+      const freq = {};
+      const filtered = srcFilter === 'all' ? items : items.filter(i => i.source === srcFilter);
+      filtered.forEach(item => {
+        let text = '';
+        if (field === 'title' || field === 'both') text += ` ${item.title || ''}`;
+        if (field === 'summary' || field === 'both') text += ` ${item.summary || ''} ${item.content || ''}`;
+        if (field === 'tags') {
+          const tags = item.tags || item.keywords || [];
+          tags.forEach(t => { freq[t.toLowerCase()] = (freq[t.toLowerCase()] || 0) + 3; });
+          return;
+        }
+        tokenize(text).forEach(w => { freq[w] = (freq[w] || 0) + 1; });
+      });
+      return Object.entries(freq)
+        .filter(([, v]) => v > 1)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 150);
+    }
+
+    function renderWordCloud() {
+      const canvas = document.getElementById('wc-canvas');
+      canvas.width = canvas.offsetWidth;
+      canvas.height = 500;
+
+      const field = document.getElementById('wc-field').value;
+      const src = document.getElementById('wc-source').value;
+      const words = buildWordFreq(allItems, field, src);
+      if (!words.length) return;
+
+      const maxFreq = words[0][1];
+      const list = words.map(([word, freq]) => [word, Math.round(10 + (freq / maxFreq) * 60)]);
+
+      WordCloud(canvas, {
+        list,
+        gridSize: 8,
+        weightFactor: 1,
+        fontFamily: 'ui-monospace, monospace',
+        color: () => `hsl(${200 + Math.random() * 120}, 70%, ${55 + Math.random() * 20}%)`,
+        backgroundColor: '#1e293b',
+        rotateRatio: 0.3,
+        rotationSteps: 2,
+        drawOutOfBound: false,
+        shrinkToFit: true,
+      });
+    }
+
+    document.getElementById('wc-refresh').addEventListener('click', renderWordCloud);
+    document.getElementById('wc-field').addEventListener('change', renderWordCloud);
+    document.getElementById('wc-source').addEventListener('change', renderWordCloud);
+
+    // ---- Helpers ----
+    function stripHtml(html) {
+      try {
+        return new DOMParser().parseFromString(html, 'text/html').body.textContent || '';
+      } catch {
+        return html.replace(/<[^>]*/g, '').replace(/&[a-z#0-9]+;/gi, ' ').trim();
+      }
+    }
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    // ---- Bootstrap ----
+    async function init() {
+      const [dateRes, trendRes, allRes] = await Promise.all([
+        fetch('/api/date').then(r => r.json()),
+        fetch('/api/trending').then(r => r.json()),
+        fetch('/api/all').then(r => r.json()),
+      ]);
+
+      document.getElementById('date-label').textContent = `Data from ${dateRes.date || 'unknown date'}`;
+      document.getElementById('stats').innerHTML =
+        `<div>${trendRes.total_items || 0} trending items</div><div>${allRes.total_items || 0} total items</div>`;
+
+      // Trending
+      trendingData = trendRes;
+      renderTrending(trendRes.items || []);
+
+      // All items
+      allData = allRes;
+      allItems = allRes.items || [];
+      renderAllTable(allItems);
+
+      // Populate source filters
+      const sources = [...new Set(allItems.map(i => i.source))].sort();
+      [document.getElementById('source-filter'), document.getElementById('wc-source')].forEach(sel => {
+        sources.forEach(s => {
+          const opt = document.createElement('option');
+          opt.value = s; opt.textContent = s;
+          sel.appendChild(opt);
+        });
+      });
+    }
+
+    init().catch(err => console.error('Init error:', err));
+  </script>
+</body>
+</html>

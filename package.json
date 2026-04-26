@@ -12,7 +12,16 @@
     "test": "node src/test.js",
     "setup:twitter": "node src/setup/twitter-login.js",
     "test:twitter": "node src/test/twitter.js",
-    "test:linkedin": "node src/test/linkedin.js"
+    "test:linkedin": "node src/test/linkedin.js",
+    "test:retry": "node src/test/retry.js",
+    "pm2:start": "pm2 start ecosystem.config.cjs",
+    "pm2:stop": "pm2 stop social-scrape",
+    "pm2:restart": "pm2 restart social-scrape",
+    "pm2:logs": "pm2 logs social-scrape",
+    "pm2:status": "pm2 status",
+    "pm2:save": "pm2 save",
+    "pm2:setup": "pm2 start ecosystem.config.cjs && pm2 save && pm2 startup",
+    "dashboard": "node src/dashboard.js"
   },
   "keywords": [
     "social-media",
@@ -24,11 +33,11 @@
   "author": "aikeytake",
   "license": "MIT",
   "dependencies": {
-    "@aikeytake/social-automation": "2.0.5",
     "@supabase/supabase-js": "^2.47.0",
     "axios": "^1.7.9",
     "cheerio": "^1.0.0",
     "dotenv": "^16.4.7",
+    "pm2": "^6.0.14",
     "rss-parser": "^3.13.0"
   },
   "devDependencies": {

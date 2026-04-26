@@ -78,6 +78,25 @@ src/fetchers/
 data/YYYY-MM-DD/*.json   # Daily output
 ```
 
+## Dashboard
+
+```bash
+npm run dashboard
+# Open http://localhost:3737
+```
+
+Visual dashboard served from `public/index.html` via a lightweight built-in HTTP server (no extra dependencies).
+
+Three tabs:
+
+| Tab | Description |
+|-----|-------------|
+| **Trending** | Top 20 ranked cards with score bar, keywords, engagement |
+| **All Items** | Searchable/filterable table of all scraped items |
+| **Word Cloud** | Word frequency visualization — filter by source and field (titles, summaries, tags) |
+
+Auto-loads the most recent date directory under `data/`. Override port with `DASHBOARD_PORT` env var.
+
 ## License
 
 MIT

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import createLogger from '../utils/logger.js';
+import { withRetry } from '../utils/retry.js';
 
 const logger = createLogger('HackerNewsFetcher');
 
@@ -21,15 +22,17 @@ export default async function hnFetch(config) {
 
   try {
     // Get top story IDs
-    const { data: topIds } = await axios.get(
-      'https://hacker-news.firebaseio.com/v0/topstories.json'
+    const { data: topIds } = await withRetry(
+      () => axios.get('https://hacker-news.firebaseio.com/v0/topstories.json'),
+      { retries: 3, baseDelay: 1000, onRetry: (a, t) => logger.warn(`HN top stories retry ${a}/${t}`) }
     );
 
     // Fetch story details
     for (const id of topIds.slice(0, limit * 2)) {
       try {
-        const { data } = await axios.get(
-          `https://hacker-news.firebaseio.com/v0/item/${id}.json`
+        const { data } = await withRetry(
+          () => axios.get(`https://hacker-news.firebaseio.com/v0/item/${id}.json`),
+          { retries: 2, baseDelay: 500 }
         );
 
         const created = new Date(data.time * 1000);

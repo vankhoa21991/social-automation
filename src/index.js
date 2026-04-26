@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import createLogger from './utils/logger.js';
+import { validateItem } from './utils/validate.js';
 import rssFetch from './fetchers/rss.js';
 import redditFetch from './fetchers/reddit.js';
 import hnFetch from './fetchers/hackernews.js';
@@ -207,19 +208,28 @@ async function generateCombinedFiles(results, today) {
       }
     }
 
+    // Filter malformed items before ranking
+    const validItems = allItems.filter(item => {
+      if (!validateItem(item)) {
+        logger.warn(`Dropped malformed item: ${String(item?.title || item?.url || JSON.stringify(item)).substring(0, 80)}`);
+        return false;
+      }
+      return true;
+    });
+
     // Save all.json
     const allData = {
       date: today,
       generated_at: new Date().toISOString(),
-      total_items: allItems.length,
+      total_items: validItems.length,
       sources: results.sources,
-      items: allItems
+      items: validItems
     };
     fs.writeFileSync(path.join(todayFolder, 'all.json'), JSON.stringify(allData, null, 2));
 
     // Generate trending.json (top 20 by score with source diversity)
     // RSS items are included even without engagement metrics (they have rich summaries)
-    const scoredItems = allItems
+    const scoredItems = validItems
       .filter(item =>
         item.metadata?.score ||
         item.engagement?.upvotes ||
