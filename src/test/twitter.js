@@ -2,24 +2,26 @@
  * Isolated Twitter fetcher test.
  * Run: npm run test:twitter
  *
- * Runs only the Twitter fetcher against the accounts in config/sources.json
+ * Runs only the Twitter fetcher against 2 accounts from config/sources.js
  * and prints results without writing any data files.
  */
 
 import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import defaultConfig from '../../config/sources.js';
 import twitterFetch from '../fetchers/twitter.js';
 
 dotenv.config();
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const configPath = path.join(__dirname, '../../config/sources.json');
-const config = JSON.parse(fs.readFileSync(configPath, 'utf-8'));
+const allAccounts = defaultConfig.trendingSources?.twitter?.accounts || [];
+const testAccounts = allAccounts.sort(() => Math.random() - 0.5).slice(0, 2);
 
-// Force enable for the test even if disabled in config
-config.trendingSources.twitter = { ...config.trendingSources.twitter, enabled: true };
+const config = {
+  ...defaultConfig,
+  trendingSources: {
+    ...defaultConfig.trendingSources,
+    twitter: { ...defaultConfig.trendingSources.twitter, enabled: true, accounts: testAccounts },
+  },
+};
 
 const tw = config.trendingSources.twitter;
 console.log(`\nAccounts: ${tw.accounts?.join(', ')}`);
