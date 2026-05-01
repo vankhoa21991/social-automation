@@ -5,6 +5,9 @@ import rssFetch from './fetchers/rss.js';
 import redditFetch from './fetchers/reddit.js';
 import hnFetch from './fetchers/hackernews.js';
 import apiFetch from './fetchers/api.js';
+import linkedinFetch from './fetchers/linkedin.js';
+import linkedinBrowserFetch from './fetchers/linkedin_browser.js';
+import twitterFetch from './fetchers/twitter.js';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -105,6 +108,51 @@ async function scrape(options = {}) {
     } catch (error) {
       logger.error(`${source.name} fetch failed: ${error.message}`);
       results.sources[source.id] = 0;
+    }
+  }
+
+  // LinkedIn (BrightData KOL)
+  if (config.linkedin?.enabled) {
+    logger.info('💼 Fetching from LinkedIn (BrightData)...');
+    try {
+      const linkedinItems = await linkedinFetch(config);
+      results.sources.linkedin = linkedinItems.length;
+      results.items.push(...linkedinItems);
+      if (saveToFilesystem) await saveSourceData('linkedin', linkedinItems, today);
+      logger.success(`✅ LinkedIn: ${linkedinItems.length} items`);
+    } catch (error) {
+      logger.error(`LinkedIn fetch failed: ${error.message}`);
+      results.sources.linkedin = 0;
+    }
+  }
+
+  // LinkedIn Browser (Playwright)
+  if (config.linkedin_browser?.enabled) {
+    logger.info('💼 Fetching from LinkedIn (browser)...');
+    try {
+      const linkedinBrowserItems = await linkedinBrowserFetch(config);
+      results.sources.linkedin_browser = linkedinBrowserItems.length;
+      results.items.push(...linkedinBrowserItems);
+      if (saveToFilesystem) await saveSourceData('linkedin_browser', linkedinBrowserItems, today);
+      logger.success(`✅ LinkedIn Browser: ${linkedinBrowserItems.length} items`);
+    } catch (error) {
+      logger.error(`LinkedIn Browser fetch failed: ${error.message}`);
+      results.sources.linkedin_browser = 0;
+    }
+  }
+
+  // Twitter
+  if (config.trendingSources?.twitter?.enabled) {
+    logger.info('🐦 Fetching from Twitter...');
+    try {
+      const twitterItems = await twitterFetch(config);
+      results.sources.twitter = twitterItems.length;
+      results.items.push(...twitterItems);
+      if (saveToFilesystem) await saveSourceData('twitter', twitterItems, today);
+      logger.success(`✅ Twitter: ${twitterItems.length} items`);
+    } catch (error) {
+      logger.error(`Twitter fetch failed: ${error.message}`);
+      results.sources.twitter = 0;
     }
   }
 
