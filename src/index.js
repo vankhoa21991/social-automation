@@ -125,8 +125,13 @@ async function scrape(options = {}) {
 }
 
 function loadConfig(optionsConfig) {
-  // Allow config override (for testing or custom sources), otherwise use bundled default
-  return optionsConfig || defaultConfig;
+  if (optionsConfig) return optionsConfig;
+  const envPath = process.env.SOURCES_CONFIG_PATH;
+  if (envPath) {
+    const resolved = path.resolve(envPath);
+    return JSON.parse(fs.readFileSync(resolved, 'utf-8'));
+  }
+  return defaultConfig;
 }
 
 function getDateString() {
