@@ -36,7 +36,7 @@ async function detectRateLimit(page) {
     if (body.includes('suspicious activity')) return 'suspicious activity warning';
     if (body.includes('Too many requests')) return 'too many requests';
     if (body.includes('verify you')) return 'verification required';
-    // Ignore invisible reCAPTCHA (size=invisible) — it's LinkedIn's background bot check, not blocking
+    // Ignore invisible reCAPTCHA (size=invisible) — background bot check, not a blocker
     const captchaFrame = [...document.querySelectorAll('iframe[src*="recaptcha"], iframe[src*="arkoselabs"], iframe[title*="challenge"]')]
       .find(f => !f.src.includes('size=invisible'));
     if (captchaFrame) return `captcha challenge: ${captchaFrame.src.substring(0, 100)}`;
@@ -84,7 +84,6 @@ export default async function linkedinBrowserFetch(config) {
     return [];
   }
 
-  // Accounts already shuffled for random order
   const accounts = [...(cfg.accounts || [])].sort(() => Math.random() - 0.5);
   const maxPerAccount = cfg.maxPostsPerAccount || 5;
   const maxAgeHours = cfg.maxAgeHours || 48;
@@ -136,40 +135,33 @@ export default async function linkedinBrowserFetch(config) {
 }
 
 async function scrapeAccount(page, slug, name, limit, cutoff) {
-  // Step 1: LinkedIn feed home
   await page.goto('https://www.linkedin.com/feed/', { waitUntil: 'domcontentloaded', timeout: 30000 });
   await sleep(rand(2000, 500));
 
   const homeRateLimit = await detectRateLimit(page);
   if (homeRateLimit) throw new RateLimitError(homeRateLimit);
 
-  // Step 2: Click search bar and type name (slug → readable name)
+  // Search for profile by name
   const searchInput = page.locator('input[placeholder*="Search"]').first();
   await searchInput.click();
   await sleep(rand(500, 150));
-
-  const searchTerm = name;
-  await humanType(page, searchTerm);
+  await humanType(page, name);
   await sleep(rand(1200, 400));
 
-  // Step 3: Find suggestion matching slug in dropdown, click it; fallback to search results page
+  // Click matching typeahead suggestion; fallback to search results page
   let clickedProfile = false;
   try {
     await page.waitForSelector('[data-testid="typeahead-results-container"]', { timeout: 5000 });
     const profileOption = page.locator(`[role="option"]:has(a[href*="/in/${slug}"])`).first();
-    const exists = await profileOption.count();
-    if (exists > 0) {
+    if (await profileOption.count() > 0) {
       await profileOption.hover();
       await sleep(rand(300, 100));
       await profileOption.click();
       clickedProfile = true;
     }
-  } catch {
-    // dropdown didn't appear
-  }
+  } catch { /* dropdown didn't appear */ }
 
   if (!clickedProfile) {
-    // Fallback: submit search, find profile link in results page
     logger.warn(`No dropdown match for ${slug}, falling back to search results page`);
     await page.keyboard.press('Enter');
     await sleep(rand(2500, 600));
@@ -190,12 +182,11 @@ async function scrapeAccount(page, slug, name, limit, cutoff) {
   const profileRateLimit = await detectRateLimit(page);
   if (profileRateLimit) throw new RateLimitError(profileRateLimit);
 
-  // Verify correct profile loaded
   if (!page.url().includes(`/in/${slug}`)) {
     throw new Error(`Wrong profile loaded. Expected /in/${slug}, got: ${page.url()}`);
   }
 
-  // Step 4: Scroll profile page to reveal Activity section, click "Show all" link
+  // Scroll to reveal Activity section, then click "Show all activity"
   await humanScroll(page, 2);
   await sleep(rand(800, 300));
 
@@ -221,12 +212,9 @@ async function scrapeAccount(page, slug, name, limit, cutoff) {
     logger.warn(`Unexpected URL after activity nav: ${page.url()}`);
   }
 
-  // Step 5: Trigger lazy load with a small scroll, then wait for post elements
-  // Two DOM variants observed:
-  //   "urn"      — feed-shared-update-v2 with data-urn (present in both click and direct-nav paths)
-  //   "carousel" — 2026 hashed-class carousel (fallback when data-urn absent)
-  // Carousel outer container renders first; data-urn inner elements render after scroll.
-  // Wait strategy: wait for carousel outer (fast), then let data-urn elements render with scroll.
+  // Find the frame containing posts.
+  // SPA click path loads content inside interop-iframe; direct nav loads in main document.
+  // Prefer data-urn (feed-shared-update-v2 semantic DOM); carousel hashed-class is the fallback.
   const FEED_CAROUSEL_SEL = '[data-testid="carousel"][role="list"]';
   const URN_SEL = 'div[data-urn^="urn:li:activity"]';
 
@@ -237,44 +225,14 @@ async function scrapeAccount(page, slug, name, limit, cutoff) {
     await sleep(rand(1000, 300));
   }
 
-  async function domDiagnostics(label) {
-    const ts = Date.now();
-    const base = path.join(__dirname, `../../data/debug-${slug}-${label}-${ts}`);
-
-    const info = await page.evaluate((sels) => {
-      return sels.map(sel => ({ sel, count: document.querySelectorAll(sel).length }));
-    }, [
-      FEED_CAROUSEL_SEL,
-      '[data-testid="carousel"]',
-      URN_SEL,
-      'div[data-urn]',
-      'main',
-      '.scaffold-finite-scroll',
-      '[class*="activity"]',
-    ]);
-
-    await page.screenshot({ path: `${base}.png`, fullPage: false });
-
-    const html = await page.content();
-    fs.writeFileSync(`${base}.html`, html, 'utf8');
-
-    logger.debug(`[diag:${label}] url=${page.url()}`);
-    info.forEach(({ sel, count }) => logger.debug(`  ${count > 0 ? '✓' : '✗'} ${count} × ${sel}`));
-    logger.debug(`  screenshot → ${base}.png`);
-    logger.debug(`  dom      → ${base}.html`);
-  }
-
-  // Returns the Frame containing post elements (main doc or interop-iframe).
   async function findPostFrame() {
     await scroll2x();
-    // Main document (direct-nav path)
     for (const sel of [URN_SEL, FEED_CAROUSEL_SEL]) {
       try {
         await page.waitForSelector(sel, { timeout: 5000 });
         return page.mainFrame();
       } catch { /* try iframe */ }
     }
-    // SPA click path — posts load inside interop-iframe, not main document
     const iframeEl = await page.$('[data-testid="interop-iframe"]');
     if (iframeEl) {
       const iframeFrame = await iframeEl.contentFrame();
@@ -282,7 +240,6 @@ async function scrapeAccount(page, slug, name, limit, cutoff) {
         for (const sel of [URN_SEL, FEED_CAROUSEL_SEL]) {
           try {
             await iframeFrame.waitForSelector(sel, { timeout: 12000 });
-            logger.debug(`  Posts found inside interop-iframe`);
             return iframeFrame;
           } catch { /* try next */ }
         }
@@ -294,7 +251,6 @@ async function scrapeAccount(page, slug, name, limit, cutoff) {
   let postFrame = await findPostFrame();
 
   if (!postFrame) {
-    await domDiagnostics('after-click');
     logger.warn(`Posts not found after click, navigating directly to activity URL`);
     await page.goto(`https://www.linkedin.com/in/${slug}/recent-activity/all/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await sleep(rand(3000, 600));
@@ -308,15 +264,13 @@ async function scrapeAccount(page, slug, name, limit, cutoff) {
   }
 
   await sleep(rand(1500, 400));
-  // Slow, shallow scroll — just enough to reveal recent posts, not deep-load history
   await humanScroll(page, 2 + Math.floor(Math.random() * 2), 200);
 
   const postRateLimit = await detectRateLimit(page);
   if (postRateLimit) logger.warn(`Rate limit overlay on ${slug}: ${postRateLimit} — attempting extraction anyway`);
 
-  // Step 6: Extract posts — data-urn (feed-shared-update-v2) first, carousel hashed-class fallback
   const rawPosts = await postFrame.evaluate((limit) => {
-    // Variant A: feed-shared-update-v2[data-urn] — semantic classes, works in both nav paths
+    // Variant A: feed-shared-update-v2[data-urn] with semantic class names
     const urnContainers = [...document.querySelectorAll('div[data-urn^="urn:li:activity"]')]
       .slice(0, limit);
 
@@ -337,33 +291,30 @@ async function scrapeAccount(page, slug, name, limit, cutoff) {
         const timeEl = el.querySelector('.update-components-actor__sub-description');
         let timeAgo = timeEl?.innerText?.trim().split(/\s*[•\n]/)[0].trim() || '';
         if (!timeAgo) {
-          const rawContent = el.textContent || '';
-          const timeMatch = rawContent.match(/(\d+\s*(?:mo|[hd wms]))\s*[•·]/i);
+          const timeMatch = (el.textContent || '').match(/(\d+\s*(?:mo|[hd wms]))\s*[•·]/i);
           timeAgo = timeMatch ? timeMatch[1].trim() : '';
         }
 
         const reactionsEl = el.querySelector('.social-details-social-counts__reactions-count');
         let reactions = parseInt(reactionsEl?.innerText?.replace(/[^0-9]/g, '') || '0', 10);
         if (!reactions) {
-          const reactionSpan = [...el.querySelectorAll('span')]
-            .find(s => /\d[\d,]*\s+reaction/i.test(s.innerText?.trim()));
-          reactions = reactionSpan ? parseInt(reactionSpan.innerText.replace(/[^0-9]/g, ''), 10) : 0;
+          const s = [...el.querySelectorAll('span')].find(s => /\d[\d,]*\s+reaction/i.test(s.innerText?.trim()));
+          reactions = s ? parseInt(s.innerText.replace(/[^0-9]/g, ''), 10) : 0;
         }
 
         const countsEl = el.querySelector('[class*="social-counts"]');
         const commentsMatch = countsEl?.innerText?.match(/(\d+)\s+comment/);
         let comments = commentsMatch ? parseInt(commentsMatch[1]) : 0;
         if (!comments) {
-          const commentSpan = [...el.querySelectorAll('span')]
-            .find(s => /\d[\d,]*\s+comment/i.test(s.innerText?.trim()));
-          comments = commentSpan ? parseInt(commentSpan.innerText.replace(/[^0-9]/g, ''), 10) : 0;
+          const s = [...el.querySelectorAll('span')].find(s => /\d[\d,]*\s+comment/i.test(s.innerText?.trim()));
+          comments = s ? parseInt(s.innerText.replace(/[^0-9]/g, ''), 10) : 0;
         }
 
         return { text, link, timeAgo, reactions, comments };
       });
     }
 
-    // Variant B fallback: 2026 hashed-class carousel (no data-urn, no semantic class names)
+    // Variant B fallback: 2026 hashed-class carousel (no data-urn)
     const feedCarousel = [...document.querySelectorAll('[data-testid="carousel"]')]
       .find(c => c.getAttribute('role') === 'list' && c.querySelector('[aria-label*="Reaction"]'));
 
@@ -380,19 +331,16 @@ async function scrapeAccount(page, slug, name, limit, cutoff) {
           .filter(t => t && t.length > 30 && !/^\d+[\d,]*\s*(reaction|comment|repost)/i.test(t));
         const text = pTexts.join('\n').trim();
 
-        const rawContent = el.textContent || '';
-        const timeMatch = rawContent.match(/(\d+\s*(?:mo|[hd wms]))\s*[•·]/i);
+        const timeMatch = (el.textContent || '').match(/(\d+\s*(?:mo|[hd wms]))\s*[•·]/i);
         const timeAgo = timeMatch ? timeMatch[1].trim() : '';
 
         const reactionSpan = [...el.querySelectorAll('span')]
           .find(s => /\d[\d,]*\s+reaction/i.test(s.innerText?.trim()));
-        const reactions = reactionSpan
-          ? parseInt(reactionSpan.innerText.replace(/[^0-9]/g, ''), 10) : 0;
+        const reactions = reactionSpan ? parseInt(reactionSpan.innerText.replace(/[^0-9]/g, ''), 10) : 0;
 
         const commentSpan = [...el.querySelectorAll('span')]
           .find(s => /\d[\d,]*\s+comment/i.test(s.innerText?.trim()));
-        const comments = commentSpan
-          ? parseInt(commentSpan.innerText.replace(/[^0-9]/g, ''), 10) : 0;
+        const comments = commentSpan ? parseInt(commentSpan.innerText.replace(/[^0-9]/g, ''), 10) : 0;
 
         return { text, link, timeAgo, reactions, comments };
       });
