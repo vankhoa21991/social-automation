@@ -13,7 +13,7 @@ const allAccounts = defaultConfig.linkedin_browser?.accounts || [];
 // const testAccounts = allAccounts.sort(() => Math.random() - 0.5).slice(0, 1);
 let testAccounts = [{ slug: "ahmad-al-dahle", name: "Ahmad Al-Dahle" }];
 testAccounts = [{ slug: "maxime-labonne", name: "Maxime Labonne"}]
-testAccounts = [{slug: "julienchaumond", name: "Julien Chaumond"}];
+// testAccounts = [{slug: "julienchaumond", name: "Julien Chaumond"}];
 
 const config = {
   ...defaultConfig,

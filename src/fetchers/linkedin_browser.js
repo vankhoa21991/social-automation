@@ -36,7 +36,10 @@ async function detectRateLimit(page) {
     if (body.includes('suspicious activity')) return 'suspicious activity warning';
     if (body.includes('Too many requests')) return 'too many requests';
     if (body.includes('verify you')) return 'verification required';
-    if (document.querySelector('iframe[src*="captcha"]')) return 'captcha detected';
+    // Ignore invisible reCAPTCHA (size=invisible) — it's LinkedIn's background bot check, not blocking
+    const captchaFrame = [...document.querySelectorAll('iframe[src*="recaptcha"], iframe[src*="arkoselabs"], iframe[title*="challenge"]')]
+      .find(f => !f.src.includes('size=invisible'));
+    if (captchaFrame) return `captcha challenge: ${captchaFrame.src.substring(0, 100)}`;
     return null;
   });
   return reason;
