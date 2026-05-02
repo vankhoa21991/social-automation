@@ -90,16 +90,36 @@ export default async function linkedinBrowserFetch(config) {
   const cutoff = new Date(Date.now() - maxAgeHours * 3600000);
   const delay = cfg.delayBetweenAccountsMs || 10000;
 
+  // Remove stale lock files left by crashed sessions
+  for (const lockFile of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) {
+    const lockPath = path.join(profileDir, lockFile);
+    if (fs.existsSync(lockPath)) {
+      try { fs.rmSync(lockPath, { force: true }); } catch { /* ignore */ }
+      logger.debug(`Removed stale lock: ${lockFile}`);
+    }
+  }
+
+  const LAUNCH_OPTS = {
+    headless: false,
+    channel: 'chrome',
+    ignoreDefaultArgs: ['--enable-automation'],
+    args: ['--disable-blink-features=AutomationControlled'],
+    viewport: { width: 1280, height: 900 },
+  };
+
   let context;
   try {
-    context = await chromium.launchPersistentContext(profileDir, {
-      headless: false,
-      channel: 'chrome',
-      ignoreDefaultArgs: ['--enable-automation'],
-      args: ['--disable-blink-features=AutomationControlled'],
-      viewport: { width: 1280, height: 900 },
-    });
+    context = await chromium.launchPersistentContext(profileDir, LAUNCH_OPTS);
+  } catch (err) {
+    // Second attempt after clearing locks in case another process released mid-launch
+    logger.warn(`Browser launch failed (${err.message.split('\n')[0]}), retrying after lock clear...`);
+    for (const lockFile of ['SingletonLock', 'SingletonCookie', 'SingletonSocket']) {
+      try { fs.rmSync(path.join(profileDir, lockFile), { force: true }); } catch { /* ignore */ }
+    }
+    context = await chromium.launchPersistentContext(profileDir, LAUNCH_OPTS);
+  }
 
+  try {
     const page = context.pages()[0] ?? await context.newPage();
     await sleep(rand(3000, 500));
 
