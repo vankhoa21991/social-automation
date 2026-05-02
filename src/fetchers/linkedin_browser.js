@@ -155,18 +155,14 @@ async function scrapeAccount(page, slug, name, limit, cutoff) {
   // Step 3: Find suggestion matching slug in dropdown, click it; fallback to search results page
   let clickedProfile = false;
   try {
-    await page.waitForSelector('[class*="search-typeahead"] li', { timeout: 5000 });
-    const suggestions = page.locator('[class*="search-typeahead"] li');
-    const count = await suggestions.count();
-    for (let i = 0; i < count; i++) {
-      const html = await suggestions.nth(i).innerHTML();
-      if (html.includes(`/in/${slug}`)) {
-        await suggestions.nth(i).hover();
-        await sleep(rand(300, 100));
-        await suggestions.nth(i).click();
-        clickedProfile = true;
-        break;
-      }
+    await page.waitForSelector('[data-testid="typeahead-results-container"]', { timeout: 5000 });
+    const profileOption = page.locator(`[role="option"]:has(a[href*="/in/${slug}"])`).first();
+    const exists = await profileOption.count();
+    if (exists > 0) {
+      await profileOption.hover();
+      await sleep(rand(300, 100));
+      await profileOption.click();
+      clickedProfile = true;
     }
   } catch {
     // dropdown didn't appear
