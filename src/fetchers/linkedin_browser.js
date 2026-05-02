@@ -208,11 +208,10 @@ async function scrapeAccount(page, slug, name, limit, cutoff) {
     await activityLink.waitFor({ timeout: 10000 });
     await activityLink.hover();
     await sleep(rand(400, 150));
-    await Promise.all([
-      page.waitForURL('**/recent-activity/all**', { timeout: 15000 }),
-      activityLink.click(),
-    ]);
-    await sleep(rand(5000, 600));
+    await activityLink.click();
+    await page.waitForURL('**/recent-activity/all**', { timeout: 15000 });
+    await page.waitForLoadState('domcontentloaded');
+    await sleep(rand(3000, 600));
   } catch {
     logger.warn(`Activity link nav failed for ${slug}, navigating directly`);
     await page.goto(`https://www.linkedin.com/in/${slug}/recent-activity/all/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
@@ -227,9 +226,11 @@ async function scrapeAccount(page, slug, name, limit, cutoff) {
   }
 
   // Step 5: Trigger lazy load with a small scroll, then wait for post elements
-  // Two DOM variants:
-  //   "carousel" — JS-rendered via "Show all" click (2026 hashed classes, no data-urn)
-  //   "urn"      — direct URL navigation (old DOM, data-urn attributes present)
+  // Two DOM variants observed:
+  //   "urn"      — feed-shared-update-v2 with data-urn (present in both click and direct-nav paths)
+  //   "carousel" — 2026 hashed-class carousel (fallback when data-urn absent)
+  // Carousel outer container renders first; data-urn inner elements render after scroll.
+  // Wait strategy: wait for carousel outer (fast), then let data-urn elements render with scroll.
   const FEED_CAROUSEL_SEL = '[data-testid="carousel"][role="list"]';
   const URN_SEL = 'div[data-urn^="urn:li:activity"]';
 
@@ -240,32 +241,71 @@ async function scrapeAccount(page, slug, name, limit, cutoff) {
     await sleep(rand(1000, 300));
   }
 
-  async function waitForPosts(preferUrn = false) {
+  async function domDiagnostics(label) {
+    const ts = Date.now();
+    const base = path.join(__dirname, `../../data/debug-${slug}-${label}-${ts}`);
+
+    const info = await page.evaluate((sels) => {
+      return sels.map(sel => ({ sel, count: document.querySelectorAll(sel).length }));
+    }, [
+      FEED_CAROUSEL_SEL,
+      '[data-testid="carousel"]',
+      URN_SEL,
+      'div[data-urn]',
+      'main',
+      '.scaffold-finite-scroll',
+      '[class*="activity"]',
+    ]);
+
+    await page.screenshot({ path: `${base}.png`, fullPage: false });
+
+    const html = await page.content();
+    fs.writeFileSync(`${base}.html`, html, 'utf8');
+
+    logger.debug(`[diag:${label}] url=${page.url()}`);
+    info.forEach(({ sel, count }) => logger.debug(`  ${count > 0 ? '✓' : '✗'} ${count} × ${sel}`));
+    logger.debug(`  screenshot → ${base}.png`);
+    logger.debug(`  dom      → ${base}.html`);
+  }
+
+  // Returns the Frame containing post elements (main doc or interop-iframe).
+  async function findPostFrame() {
     await scroll2x();
-    const ordered = preferUrn
-      ? [URN_SEL, FEED_CAROUSEL_SEL]
-      : [FEED_CAROUSEL_SEL, URN_SEL];
-    for (const sel of ordered) {
+    // Main document (direct-nav path)
+    for (const sel of [URN_SEL, FEED_CAROUSEL_SEL]) {
       try {
-        await page.waitForSelector(sel, { timeout: 6000 });
-        return sel;
-      } catch { /* try next */ }
+        await page.waitForSelector(sel, { timeout: 5000 });
+        return page.mainFrame();
+      } catch { /* try iframe */ }
+    }
+    // SPA click path — posts load inside interop-iframe, not main document
+    const iframeEl = await page.$('[data-testid="interop-iframe"]');
+    if (iframeEl) {
+      const iframeFrame = await iframeEl.contentFrame();
+      if (iframeFrame) {
+        for (const sel of [URN_SEL, FEED_CAROUSEL_SEL]) {
+          try {
+            await iframeFrame.waitForSelector(sel, { timeout: 12000 });
+            logger.debug(`  Posts found inside interop-iframe`);
+            return iframeFrame;
+          } catch { /* try next */ }
+        }
+      }
     }
     return null;
   }
 
-  // let foundSelector = await waitForPosts(false);
-  let foundSelector = false;
+  let postFrame = await findPostFrame();
 
-  if (!foundSelector) {
+  if (!postFrame) {
+    await domDiagnostics('after-click');
     logger.warn(`Posts not found after click, navigating directly to activity URL`);
     await page.goto(`https://www.linkedin.com/in/${slug}/recent-activity/all/`, { waitUntil: 'domcontentloaded', timeout: 30000 });
     await sleep(rand(3000, 600));
-    // Direct nav preserves data-urn DOM — try that first
-    foundSelector = await waitForPosts(true);
+    postFrame = await findPostFrame();
   }
 
-  if (!foundSelector) {
+  if (!postFrame) {
     const screenshotPath = path.join(__dirname, `../../data/debug-${slug}-${Date.now()}.png`);
     await page.screenshot({ path: screenshotPath, fullPage: false });
     throw new Error(`No post elements found for ${slug}. Screenshot: ${screenshotPath}`);
@@ -278,17 +318,64 @@ async function scrapeAccount(page, slug, name, limit, cutoff) {
   const postRateLimit = await detectRateLimit(page);
   if (postRateLimit) logger.warn(`Rate limit overlay on ${slug}: ${postRateLimit} — attempting extraction anyway`);
 
-  // Step 6: Extract posts — handle both DOM variants
-  const rawPosts = await page.evaluate((limit) => {
-    // Variant A (2026 carousel DOM): [data-testid="carousel"][role="list"]
+  // Step 6: Extract posts — data-urn (feed-shared-update-v2) first, carousel hashed-class fallback
+  const rawPosts = await postFrame.evaluate((limit) => {
+    // Variant A: feed-shared-update-v2[data-urn] — semantic classes, works in both nav paths
+    const urnContainers = [...document.querySelectorAll('div[data-urn^="urn:li:activity"]')]
+      .slice(0, limit);
+
+    if (urnContainers.length > 0) {
+      return urnContainers.map(el => {
+        const urn = el.getAttribute('data-urn');
+        const link = urn ? `https://www.linkedin.com/feed/update/${urn}/` : '';
+
+        const textEl = el.querySelector('.update-components-text, [class*="commentary"]');
+        let text = textEl?.innerText?.trim() || '';
+        if (!text) {
+          const pTexts = [...el.querySelectorAll('p')]
+            .map(p => p.innerText?.trim())
+            .filter(t => t && t.length > 30 && !/^\d+[\d,]*\s*(reaction|comment|repost)/i.test(t));
+          text = pTexts.join('\n').trim();
+        }
+
+        const timeEl = el.querySelector('.update-components-actor__sub-description');
+        let timeAgo = timeEl?.innerText?.trim().split(/\s*[•\n]/)[0].trim() || '';
+        if (!timeAgo) {
+          const rawContent = el.textContent || '';
+          const timeMatch = rawContent.match(/(\d+\s*(?:mo|[hd wms]))\s*[•·]/i);
+          timeAgo = timeMatch ? timeMatch[1].trim() : '';
+        }
+
+        const reactionsEl = el.querySelector('.social-details-social-counts__reactions-count');
+        let reactions = parseInt(reactionsEl?.innerText?.replace(/[^0-9]/g, '') || '0', 10);
+        if (!reactions) {
+          const reactionSpan = [...el.querySelectorAll('span')]
+            .find(s => /\d[\d,]*\s+reaction/i.test(s.innerText?.trim()));
+          reactions = reactionSpan ? parseInt(reactionSpan.innerText.replace(/[^0-9]/g, ''), 10) : 0;
+        }
+
+        const countsEl = el.querySelector('[class*="social-counts"]');
+        const commentsMatch = countsEl?.innerText?.match(/(\d+)\s+comment/);
+        let comments = commentsMatch ? parseInt(commentsMatch[1]) : 0;
+        if (!comments) {
+          const commentSpan = [...el.querySelectorAll('span')]
+            .find(s => /\d[\d,]*\s+comment/i.test(s.innerText?.trim()));
+          comments = commentSpan ? parseInt(commentSpan.innerText.replace(/[^0-9]/g, ''), 10) : 0;
+        }
+
+        return { text, link, timeAgo, reactions, comments };
+      });
+    }
+
+    // Variant B fallback: 2026 hashed-class carousel (no data-urn, no semantic class names)
     const feedCarousel = [...document.querySelectorAll('[data-testid="carousel"]')]
       .find(c => c.getAttribute('role') === 'list' && c.querySelector('[aria-label*="Reaction"]'));
 
-    if (feedCarousel) {
-      const containers = [...feedCarousel.querySelectorAll('li[data-testid="carousel-child-container"]')]
-        .slice(0, limit);
+    if (!feedCarousel) return [];
 
-      return containers.map(el => {
+    return [...feedCarousel.querySelectorAll('li[data-testid="carousel-child-container"]')]
+      .slice(0, limit)
+      .map(el => {
         const actLink = el.querySelector('a[href*="feed/update/urn:li:activity"]');
         const link = actLink?.href || '';
 
@@ -297,7 +384,6 @@ async function scrapeAccount(page, slug, name, limit, cutoff) {
           .filter(t => t && t.length > 30 && !/^\d+[\d,]*\s*(reaction|comment|repost)/i.test(t));
         const text = pTexts.join('\n').trim();
 
-        // Time is in a hidden element — use textContent
         const rawContent = el.textContent || '';
         const timeMatch = rawContent.match(/(\d+\s*(?:mo|[hd wms]))\s*[•·]/i);
         const timeAgo = timeMatch ? timeMatch[1].trim() : '';
@@ -314,52 +400,6 @@ async function scrapeAccount(page, slug, name, limit, cutoff) {
 
         return { text, link, timeAgo, reactions, comments };
       });
-    }
-
-    // Variant B (direct URL nav, old DOM): div[data-urn^="urn:li:activity"]
-    const containers = [...document.querySelectorAll('div[data-urn^="urn:li:activity"]')]
-      .slice(0, limit);
-
-    return containers.map(el => {
-      const urn = el.getAttribute('data-urn');
-      const link = urn ? `https://www.linkedin.com/feed/update/${urn}/` : '';
-
-      const textEl = el.querySelector('.update-components-text, [class*="commentary"]');
-      let text = textEl?.innerText?.trim() || '';
-      if (!text) {
-        const pTexts = [...el.querySelectorAll('p')]
-          .map(p => p.innerText?.trim())
-          .filter(t => t && t.length > 30 && !/^\d+[\d,]*\s*(reaction|comment|repost)/i.test(t));
-        text = pTexts.join('\n').trim();
-      }
-
-      const timeEl = el.querySelector('.update-components-actor__sub-description');
-      let timeAgo = timeEl?.innerText?.trim().split(/\s*[•\n]/)[0].trim() || '';
-      if (!timeAgo) {
-        const rawContent = el.textContent || '';
-        const timeMatch = rawContent.match(/(\d+\s*(?:mo|[hd wms]))\s*[•·]/i);
-        timeAgo = timeMatch ? timeMatch[1].trim() : '';
-      }
-
-      const reactionsEl = el.querySelector('.social-details-social-counts__reactions-count');
-      let reactions = parseInt(reactionsEl?.innerText?.replace(/[^0-9]/g, '') || '0', 10);
-      if (!reactions) {
-        const reactionSpan = [...el.querySelectorAll('span')]
-          .find(s => /\d[\d,]*\s+reaction/i.test(s.innerText?.trim()));
-        reactions = reactionSpan ? parseInt(reactionSpan.innerText.replace(/[^0-9]/g, ''), 10) : 0;
-      }
-
-      const countsEl = el.querySelector('[class*="social-counts"]');
-      const commentsMatch = countsEl?.innerText?.match(/(\d+)\s+comment/);
-      let comments = commentsMatch ? parseInt(commentsMatch[1]) : 0;
-      if (!comments) {
-        const commentSpan = [...el.querySelectorAll('span')]
-          .find(s => /\d[\d,]*\s+comment/i.test(s.innerText?.trim()));
-        comments = commentSpan ? parseInt(commentSpan.innerText.replace(/[^0-9]/g, ''), 10) : 0;
-      }
-
-      return { text, link, timeAgo, reactions, comments };
-    });
   }, limit);
 
   return rawPosts
