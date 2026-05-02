@@ -4,20 +4,24 @@
  */
 
 import dotenv from 'dotenv';
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import defaultConfig from '../../config/sources.js';
 import linkedinBrowserFetch from '../fetchers/linkedin_browser.js';
 
 dotenv.config();
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const config = JSON.parse(fs.readFileSync(path.join(__dirname, '../../config/sources.json'), 'utf-8'));
+const allAccounts = defaultConfig.linkedin_browser?.accounts || [];
+const testAccounts = allAccounts.sort(() => Math.random() - 0.5).slice(0, 1);
+// let testAccounts = [{ slug: "ahmad-al-dahle", name: "Ahmad Al-Dahle" }];
+// testAccounts = [{ slug: "maxime-labonne", name: "Maxime Labonne"}]
+// testAccounts = [{slug: "julienchaumond", name: "Julien Chaumond"}];
 
-config.linkedin_browser = { ...config.linkedin_browser, enabled: true };
+const config = {
+  ...defaultConfig,
+  linkedin_browser: { ...defaultConfig.linkedin_browser, enabled: true, accounts: testAccounts },
+};
 
 const cfg = config.linkedin_browser;
-console.log(`\nAccounts: ${cfg.accounts?.join(', ')}`);
+console.log(`\nAccounts: ${cfg.accounts?.map(a => `${a.name} (${a.slug})`).join(', ')}`);
 console.log(`Max per account: ${cfg.maxPostsPerAccount}`);
 console.log(`Max age hours: ${cfg.maxAgeHours}\n`);
 

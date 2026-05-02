@@ -142,7 +142,8 @@ function mapItem(raw, source) {
 
   // Normalise pubDate to ISO
   if (item.pubDate && !String(item.pubDate).includes('T')) {
-    item.pubDate = new Date(item.pubDate).toISOString();
+    const d = new Date(item.pubDate);
+    item.pubDate = isNaN(d.getTime()) ? new Date().toISOString() : d.toISOString();
   }
   if (!item.pubDate) item.pubDate = new Date().toISOString();
 
@@ -234,7 +235,14 @@ export default async function apiFetch(source) {
     });
   }
 
-  const items = filtered.map(raw => mapItem(raw, source));
+  const items = [];
+  for (const raw of filtered) {
+    try {
+      items.push(mapItem(raw, source));
+    } catch (err) {
+      logger.debug(`[${source.id}] item mapping error: ${err.message}`);
+    }
+  }
   logger.success(`[${source.id}] Fetched ${items.length} items`);
   return items;
 }

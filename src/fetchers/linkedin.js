@@ -136,39 +136,43 @@ async function fetchBatch(batch, state, cfg, apiKey, zone) {
   const posts = [];
 
   for (const item of organicResults) {
-    if (!item.link?.includes('linkedin.com/posts')) continue;
+    try {
+      if (!item.link?.includes('linkedin.com/posts')) continue;
 
-    // Match result back to a specific KOL from this batch
-    const kol = matchKol(item, batch);
-    if (!kol) continue;
+      // Match result back to a specific KOL from this batch
+      const kol = matchKol(item, batch);
+      if (!kol) continue;
 
-    // Skip boilerplate / profile-bio-only snippets — these have no post content
-    const rawContent = item.description || item.snippet || '';
-    if (!isUsefulContent(rawContent)) continue;
+      // Skip boilerplate / profile-bio-only snippets — these have no post content
+      const rawContent = item.description || item.snippet || '';
+      if (!isUsefulContent(rawContent)) continue;
 
-    const id = crypto.createHash('md5').update(item.link).digest('hex');
+      const id = crypto.createHash('md5').update(item.link).digest('hex');
 
-    // Skip posts we've already seen for this KOL
-    if (state[kol.name]?.seenPostIds?.includes(id)) continue;
+      // Skip posts we've already seen for this KOL
+      if (state[kol.name]?.seenPostIds?.includes(id)) continue;
 
-    posts.push({
-      id,
-      source: 'linkedin',
-      sourceName: kol.name,
-      category: 'linkedin-kol',
-      title: cleanTitle(item.title || '', kol.name),
-      link: item.link,
-      url: item.link,
-      content: cleanContent(rawContent),
-      summary: cleanContent(rawContent).substring(0, 200),
-      author: kol.name,
-      role: kol.role || '',
-      pubDate: extractDate(item) || new Date().toISOString(),
-      scraped_at: new Date().toISOString(),
-      age_hours: 0,
-      engagement: { upvotes: 0, comments: 0 },
-      metadata: { score: 0 },
-    });
+      posts.push({
+        id,
+        source: 'linkedin',
+        sourceName: kol.name,
+        category: 'linkedin-kol',
+        title: cleanTitle(item.title || '', kol.name),
+        link: item.link,
+        url: item.link,
+        content: cleanContent(rawContent),
+        summary: cleanContent(rawContent).substring(0, 200),
+        author: kol.name,
+        role: kol.role || '',
+        pubDate: extractDate(item) || new Date().toISOString(),
+        scraped_at: new Date().toISOString(),
+        age_hours: 0,
+        engagement: { upvotes: 0, comments: 0 },
+        metadata: { score: 0 },
+      });
+    } catch (err) {
+      logger.debug(`fetchBatch: item error: ${err.message}`);
+    }
   }
 
   return posts;

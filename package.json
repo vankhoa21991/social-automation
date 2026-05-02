@@ -38,6 +38,7 @@
     "cheerio": "^1.0.0",
     "dotenv": "^16.4.7",
     "pm2": "^6.0.14",
+    "playwright": "^1.49.0",
     "rss-parser": "^3.13.0"
   },
   "devDependencies": {
