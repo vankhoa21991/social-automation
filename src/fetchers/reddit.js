@@ -32,42 +32,47 @@ export default async function redditFetch(config) {
       const posts = response.data.data.children;
 
       for (const post of posts) {
-        const data = post.data;
-        const created = new Date(data.created_utc * 1000);
+        try {
+          const data = post.data;
+          const created = new Date(data.created_utc * 1000);
+          if (isNaN(created.getTime())) continue;
 
-        // Skip old posts
-        if (created < cutoff) continue;
+          // Skip old posts
+          if (created < cutoff) continue;
 
-        // Skip low-score posts
-        if (data.score < minScore) continue;
+          // Skip low-score posts
+          if (data.score < minScore) continue;
 
-        // Skip NSFW
-        if (data.over_18) continue;
+          // Skip NSFW
+          if (data.over_18) continue;
 
-        allItems.push({
-          id: `reddit_${data.id}`,
-          source: 'reddit',
-          sourceName: `r/${subreddit}`,
-          title: data.title,
-          content: data.selftext || '',
-          summary: (data.selftext || '').substring(0, 200),
-          url: `https://reddit.com${data.permalink}`,
-          external_url: data.url,
-          author: data.author,
-          posted_at: new Date(data.created_utc * 1000).toISOString(),
-          scraped_at: new Date().toISOString(),
-          age_hours: Math.floor((Date.now() - created.getTime()) / (1000 * 60 * 60)),
-          engagement: {
-            upvotes: data.score,
-            comments: data.num_comments,
-            ratio: data.upvote_ratio
-          },
-          metadata: {
-            score: data.score,
-            is_self: data.is_self,
-            is_video: data.is_video
-          }
-        });
+          allItems.push({
+            id: `reddit_${data.id}`,
+            source: 'reddit',
+            sourceName: `r/${subreddit}`,
+            title: data.title,
+            content: data.selftext || '',
+            summary: (data.selftext || '').substring(0, 200),
+            url: `https://reddit.com${data.permalink}`,
+            external_url: data.url,
+            author: data.author,
+            posted_at: new Date(data.created_utc * 1000).toISOString(),
+            scraped_at: new Date().toISOString(),
+            age_hours: Math.floor((Date.now() - created.getTime()) / (1000 * 60 * 60)),
+            engagement: {
+              upvotes: data.score,
+              comments: data.num_comments,
+              ratio: data.upvote_ratio
+            },
+            metadata: {
+              score: data.score,
+              is_self: data.is_self,
+              is_video: data.is_video
+            }
+          });
+        } catch (err) {
+          logger.debug(`r/${subreddit}: post error: ${err.message}`);
+        }
       }
 
       logger.debug(`Fetched from r/${subreddit}`);

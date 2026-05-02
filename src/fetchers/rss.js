@@ -22,25 +22,35 @@ export default async function rssFetch(config) {
       );
 
       for (const item of parsed.items) {
-        const pubDate = new Date(item.pubDate);
+        try {
+          if (!item.link) {
+            logger.debug(`${feed.name}: item missing link, skipping`);
+            continue;
+          }
+          const pubDate = new Date(item.pubDate);
+          if (isNaN(pubDate.getTime())) {
+            logger.debug(`${feed.name}: item has invalid date, skipping`);
+            continue;
+          }
+          if (pubDate < cutoff) continue;
 
-        // Skip old items
-        if (pubDate < cutoff) continue;
-
-        allItems.push({
-          id: crypto.createHash('md5').update(item.link).digest('hex'),
-          source: 'rss',
-          sourceName: feed.name,
-          category: feed.category,
-          title: item.title,
-          link: item.link,
-          content: item.contentSnippet || item.content || '',
-          summary: (item.contentSnippet || item.content || '').substring(0, 200),
-          pubDate: item.pubDate,
-          author: item.creator || item.author || feed.name,
-          scraped_at: new Date().toISOString(),
-          age_hours: Math.floor((Date.now() - pubDate.getTime()) / (1000 * 60 * 60))
-        });
+          allItems.push({
+            id: crypto.createHash('md5').update(item.link).digest('hex'),
+            source: 'rss',
+            sourceName: feed.name,
+            category: feed.category,
+            title: item.title,
+            link: item.link,
+            content: item.contentSnippet || item.content || '',
+            summary: (item.contentSnippet || item.content || '').substring(0, 200),
+            pubDate: item.pubDate,
+            author: item.creator || item.author || feed.name,
+            scraped_at: new Date().toISOString(),
+            age_hours: Math.floor((Date.now() - pubDate.getTime()) / (1000 * 60 * 60))
+          });
+        } catch (err) {
+          logger.debug(`${feed.name}: item error: ${err.message}`);
+        }
       }
 
       logger.debug(`Fetched items from ${feed.name}`);

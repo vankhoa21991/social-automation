@@ -35,7 +35,11 @@ export default async function hnFetch(config) {
           { retries: 2, baseDelay: 500 }
         );
 
+        // Skip deleted/dead items
+        if (!data.title) continue;
+
         const created = new Date(data.time * 1000);
+        if (isNaN(created.getTime())) continue;
 
         // Skip old stories
         if (created < cutoff) continue;
