@@ -19,7 +19,7 @@ export default {
     { name: "arXiv AI", url: "https://rss.arxiv.org/rss/cs.AI", category: "research-papers", enabled: true },
     { name: "arXiv Machine Learning", url: "https://rss.arxiv.org/rss/cs.LG", category: "research-papers", enabled: true }
   ],
-  linkedin_browser: { enabled: true, accounts: ["julienchaumond"], maxPostsPerAccount: 5, maxAgeHours: 48, delayBetweenAccountsMs: 10000 },
+  linkedin_browser: { enabled: false, accounts: [{ slug: "julienchaumond", name: "Julien Chaumond" }, { slug: "aleksagordic", name: "Aleksa Gordić" }, { slug: "ardivekar", name: "Abhishek Divekar" }], maxPostsPerAccount: 5, maxAgeHours: 48, delayBetweenAccountsMs: 10000 },
   apiSources: [
     {
       id: "goodailist", name: "Good AI List", enabled: true, weight: 0.5,
