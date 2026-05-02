@@ -10,7 +10,10 @@ import linkedinBrowserFetch from '../fetchers/linkedin_browser.js';
 dotenv.config();
 
 const allAccounts = defaultConfig.linkedin_browser?.accounts || [];
-const testAccounts = allAccounts.sort(() => Math.random() - 0.5).slice(0, 2);
+// const testAccounts = allAccounts.sort(() => Math.random() - 0.5).slice(0, 1);
+let testAccounts = [{ slug: "ahmad-al-dahle", name: "Ahmad Al-Dahle" }];
+testAccounts = [{ slug: "maxime-labonne", name: "Maxime Labonne"}]
+testAccounts = [{slug: "julienchaumond", name: "Julien Chaumond"}];
 
 const config = {
   ...defaultConfig,
@@ -18,7 +21,7 @@ const config = {
 };
 
 const cfg = config.linkedin_browser;
-console.log(`\nAccounts: ${cfg.accounts?.join(', ')}`);
+console.log(`\nAccounts: ${cfg.accounts?.map(a => `${a.name} (${a.slug})`).join(', ')}`);
 console.log(`Max per account: ${cfg.maxPostsPerAccount}`);
 console.log(`Max age hours: ${cfg.maxAgeHours}\n`);
 
