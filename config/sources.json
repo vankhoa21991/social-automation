@@ -395,7 +395,10 @@
         "deeplearning",
         "OpenAI",
         "LocalLLaMA",
-        "singularity"
+        "singularity",
+        "ChatGPT",
+        "ClaudeAI",
+        "StableDiffusion"
       ],
       "minScore": 100,
       "maxAge": "24h"

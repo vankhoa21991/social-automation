@@ -15,7 +15,7 @@ export default {
     { name: "AWS Machine Learning Blog", url: "https://aws.amazon.com/blogs/machine-learning/feed/", category: "cloud-ai", enabled: true },
     { name: "Microsoft AI Blog", url: "https://blogs.microsoft.com/ai/feed/", category: "company-news", enabled: true },
     { name: "NVIDIA Technical Blog", url: "https://blogs.nvidia.com/feed/", category: "company-engineering", enabled: true },
-    { name: "LinkedIn Engineering", url: "https://engineering.linkedin.com/blog.rss", category: "company-engineering", enabled: true },
+    { name: "LinkedIn Engineering", url: "https://www.linkedin.com/blog/engineering", category: "company-engineering", enabled: true, htmlSelectors: { linkSelector: 'a.grid-post__link, a.featured-post__headline', dateSelector: 'p.grid-post__date' } },
     { name: "arXiv AI", url: "https://rss.arxiv.org/rss/cs.AI", category: "research-papers", enabled: true },
     { name: "arXiv Machine Learning", url: "https://rss.arxiv.org/rss/cs.LG", category: "research-papers", enabled: true }
   ],
