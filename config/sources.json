@@ -398,7 +398,12 @@
         "singularity",
         "ChatGPT",
         "ClaudeAI",
-        "StableDiffusion"
+        "StableDiffusion",
+        "Futurology",
+        "technology",
+        "compsci",
+        "reinforcementlearning",
+        "Bard"
       ],
       "minScore": 100,
       "maxAge": "24h"

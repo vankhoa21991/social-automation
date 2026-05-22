@@ -59,7 +59,7 @@ export default {
   },
   filtering: { minEngagementScore: 10, maxAgeHours: 48, deduplicationWindow: 72 },
   trendingSources: {
-    reddit: { enabled: true, subreddits: ["MachineLearning", "artificial", "ArtificialIntelligence", "deeplearning", "OpenAI", "LocalLLaMA", "singularity"], minScore: 100, maxAge: "24h" },
+    reddit: { enabled: true, subreddits: ["MachineLearning", "artificial", "AINews", "deeplearning", "OpenAI", "LocalLLaMA", "singularity", "ChatGPT", "ClaudeAI", "StableDiffusion", "Futurology", "technology", "compsci", "reinforcementlearning", "Bard"], minScore: 100, maxAge: "24h" },
     hackernews: { enabled: true, keywords: ["AI", "artificial intelligence", "machine learning", "deep learning", "GPT", "LLM", "OpenAI", "Anthropic", "Google AI", "neural network"], minPoints: 50 },
     twitter: { enabled: false, accounts: ["AndrewYNg", "ylecun", "OpenAI", "AnthropicAI", "GoogleAI"], minLikes: 100, maxTweetsPerAccount: 5, maxAgeHours: 24, delayBetweenAccountsMs: 3000 }
   },
