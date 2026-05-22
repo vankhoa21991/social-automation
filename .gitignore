@@ -29,3 +29,5 @@ data/linkedin_kol_full.json
 
 # Browser session data (Twitter/LinkedIn login)
 data/playwright-profile/
+
+.playwright-mcp

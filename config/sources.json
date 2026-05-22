@@ -26,7 +26,7 @@
     },
     {
       "name": "Anthropic Blog",
-      "url": "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic.xml",
+      "url": "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_news.xml",
       "category": "company-news",
       "enabled": true
     },
@@ -62,7 +62,7 @@
     },
     {
       "name": "Netflix Tech Blog",
-      "url": "https://medium.com/feed/netflix-techblog",
+      "url": "https://netflixtechblog.com/feed",
       "category": "company-engineering",
       "enabled": true
     },

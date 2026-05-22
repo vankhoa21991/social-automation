@@ -1,10 +1,12 @@
 import Parser from 'rss-parser';
+import https from 'https';
 import crypto from 'crypto';
 import createLogger from '../utils/logger.js';
 import { withRetry } from '../utils/retry.js';
 
 const logger = createLogger('RSSFetcher');
 const parser = new Parser();
+const parserNoSsl = new Parser({ requestOptions: { agent: new https.Agent({ rejectUnauthorized: false }) } });
 
 export default async function rssFetch(config) {
   const feeds = config.rssFeeds.filter(f => f.enabled);
@@ -16,8 +18,9 @@ export default async function rssFetch(config) {
 
   for (const feed of feeds) {
     try {
+      const feedParser = feed.skipSslVerify ? parserNoSsl : parser;
       const parsed = await withRetry(
-        () => parser.parseURL(feed.url),
+        () => feedParser.parseURL(feed.url),
         { retries: 3, baseDelay: 1000, onRetry: (a, t) => logger.warn(`${feed.name} retry ${a}/${t}`) }
       );
 
