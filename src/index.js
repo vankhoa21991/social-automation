@@ -12,6 +12,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import defaultConfig from '../config/sources.js';
+import { deduplicateItems } from './utils/dedup.js';
 
 dotenv.config();
 
@@ -261,8 +262,13 @@ async function generateCombinedFiles(results, today) {
       }
     }
 
+    // Deduplicate cross-source items by canonical article URL
+    const dedupedItems = deduplicateItems(allItems);
+    const dupCount = dedupedItems._dupCount || 0;
+    logger.info(`Items: ${allItems.length} scraped → ${dupCount} dupes removed → ${allItems.length - dupCount} total`);
+
     // Filter malformed items before ranking
-    const validItems = allItems.filter(item => {
+    const validItems = dedupedItems.filter(item => {
       if (!validateItem(item)) {
         logger.warn(`Dropped malformed item: ${String(item?.title || item?.url || JSON.stringify(item)).substring(0, 80)}`);
         return false;
@@ -349,9 +355,10 @@ function calculateScore(item) {
 }
 
 function getItemSources(item) {
-  const sources = [item.source];
-  if (item.sourceName) sources.push(item.sourceName);
-  return sources;
+  if (item._dedup_entries?.length > 1) {
+    return item._dedup_entries.flatMap(e => [e.source, e.sourceName]);
+  }
+  return [item.source, item.sourceName].filter(Boolean);
 }
 
 function extractSummary(item) {

@@ -1,6 +1,6 @@
 # Social Automation
 
-> Scrape AI/tech content from 17+ sources — no Twitter or LinkedIn API keys needed. Outputs ranked, deduplicated JSON ready for AI agent consumption.
+> Scrape AI/tech content from 24+ RSS feeds and 15 subreddits — no Twitter or LinkedIn API keys needed. Outputs ranked, deduplicated JSON ready for AI agent consumption.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Node.js](https://img.shields.io/badge/Node.js-18%2B-green)](https://nodejs.org)
@@ -10,7 +10,8 @@
 
 ## Features
 
-- **17+ sources** — RSS, Reddit, Hacker News, Twitter/X, LinkedIn (browser + BrightData)
+- **24 RSS feeds + 15 subreddits** — plus Hacker News, Twitter/X, LinkedIn (browser + BrightData)
+- **Cross-source dedup** — URL normalization strips UTM params, merges same article from multiple sources
 - **Engagement scoring** — ranks by upvotes, points, comments with per-source diversity cap
 - **No API keys for Twitter/LinkedIn** — Playwright browser sessions, login once
 - **Daily JSON output** — structured for AI agent consumption
@@ -81,8 +82,8 @@ npm run setup:twitter   # Opens browser — log in once, session cached
 
 | Key | Description |
 |---|---|
-| `rssFeeds` | 17 RSS sources with categories and enable flags |
-| `trendingSources.reddit` | 7 AI subreddits, minScore, maxAge |
+| `rssFeeds` | 24 RSS sources with categories and enable flags |
+| `trendingSources.reddit` | 15 AI subreddits, minScore, maxAge |
 | `trendingSources.hackernews` | Keyword filters, minPoints |
 | `trendingSources.twitter` | X accounts, minLikes, maxTweetsPerAccount |
 | `linkedin_browser` | Profile slugs, maxPostsPerAccount, maxAgeHours |
@@ -109,6 +110,12 @@ npm run query fresh 6       # Items from last N hours
 npm run query search "AI"   # Full-text search
 npm run query source reddit # Filter by source
 npm run query compare 2026-04-01 2026-04-02  # Compare two days
+```
+
+### Testing
+
+```bash
+npm run test:dedup          # Run dedup unit tests (30 tests)
 ```
 
 ### Browser Sources
@@ -176,13 +183,15 @@ config/sources.json          ← single source of truth for all config
         │
 src/index.js                 ← ContentScraper orchestrator
         │
-        ├── src/fetchers/rss.js              17 RSS feeds
-        ├── src/fetchers/reddit.js           7 AI subreddits
+        ├── src/fetchers/rss.js              24 RSS feeds
+        ├── src/fetchers/reddit.js           15 AI subreddits
         ├── src/fetchers/hackernews.js       HN AI-filtered stories
         ├── src/fetchers/twitter.js          Twitter/X via Playwright
         ├── src/fetchers/linkedin_browser.js LinkedIn via Playwright
         ├── src/fetchers/linkedin.js         LinkedIn via BrightData SERP
         └── src/fetchers/api.js              Generic REST/GraphQL
+        │
+src/utils/dedup.js           ← URL normalization + cross-source dedup (runs after all fetchers)
         │
 data/YYYY-MM-DD/*.json       ← daily output
 ```

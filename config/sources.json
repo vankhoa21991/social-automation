@@ -26,7 +26,7 @@
     },
     {
       "name": "Anthropic Blog",
-      "url": "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic.xml",
+      "url": "https://raw.githubusercontent.com/Olshansk/rss-feeds/main/feeds/feed_anthropic_news.xml",
       "category": "company-news",
       "enabled": true
     },
@@ -62,7 +62,7 @@
     },
     {
       "name": "Netflix Tech Blog",
-      "url": "https://medium.com/feed/netflix-techblog",
+      "url": "https://netflixtechblog.com/feed",
       "category": "company-engineering",
       "enabled": true
     },
@@ -245,6 +245,48 @@
       "url": "https://towardsdatascience.com/feed",
       "category": "ai-research",
       "enabled": true
+    },
+    {
+      "name": "arXiv NLP",
+      "url": "https://rss.arxiv.org/rss/cs.CL",
+      "category": "research-papers",
+      "enabled": true
+    },
+    {
+      "name": "Simon Willison",
+      "url": "https://simonwillison.net/atom/everything/",
+      "category": "ai-news",
+      "enabled": true
+    },
+    {
+      "name": "Sebastian Raschka",
+      "url": "https://magazine.sebastianraschka.com/feed",
+      "category": "research",
+      "enabled": true
+    },
+    {
+      "name": "Eugene Yan",
+      "url": "https://eugeneyan.com/rss/",
+      "category": "research",
+      "enabled": true
+    },
+    {
+      "name": "Lilian Weng",
+      "url": "https://lilianweng.github.io/index.xml",
+      "category": "research",
+      "enabled": true
+    },
+    {
+      "name": "Andrej Karpathy",
+      "url": "https://karpathy.github.io/feed.xml",
+      "category": "research",
+      "enabled": true
+    },
+    {
+      "name": "TLDR AI",
+      "url": "https://tldr.tech/api/rss/ai",
+      "category": "ai-news",
+      "enabled": true
     }
   ],
   "linkedin_browser": {
@@ -391,11 +433,19 @@
       "subreddits": [
         "MachineLearning",
         "artificial",
-        "ArtificialIntelligence",
+        "AINews",
         "deeplearning",
         "OpenAI",
         "LocalLLaMA",
-        "singularity"
+        "singularity",
+        "ChatGPT",
+        "ClaudeAI",
+        "StableDiffusion",
+        "Futurology",
+        "technology",
+        "compsci",
+        "reinforcementlearning",
+        "Bard"
       ],
       "minScore": 100,
       "maxAge": "24h"

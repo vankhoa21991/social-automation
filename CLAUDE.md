@@ -40,6 +40,13 @@ npm run query source reddit      # Get by source
 npm run query compare 2026-04-01 2026-04-02  # Compare two days
 ```
 
+### Testing
+
+```bash
+# Run dedup unit tests (30 tests)
+npm run test:dedup
+```
+
 ### Browser-Based Sources (Playwright)
 
 ```bash
@@ -65,8 +72,8 @@ config/sources.json (configuration)
 src/index.js (orchestrator)
         ↓
 src/fetchers/
-├── rss.js              # 17 RSS feeds
-├── reddit.js           # 7 AI subreddits (min 100 upvotes)
+├── rss.js              # 24 RSS feeds
+├── reddit.js           # 15 AI subreddits (min 100 upvotes)
 ├── hackernews.js       # HN AI-filtered stories (min 50 points)
 ├── linkedin.js         # LinkedIn KOL via BrightData SERP
 ├── linkedin_browser.js # LinkedIn via Playwright browser
@@ -81,6 +88,7 @@ data/YYYY-MM-DD/*.json (daily output)
 - `src/index.js` - Main orchestrator, exports `scrape()` function
 - `src/query.js` - DataQuery class for reading/analyzing scraped data
 - `src/cli.js` - CLI for queue/drafts/published management
+- `src/utils/dedup.js` - URL normalization and cross-source deduplication
 - `src/utils/logger.js` - Color-coded logger
 - `src/utils/storage.js` - JSON file storage utility
 
@@ -90,8 +98,8 @@ data/YYYY-MM-DD/*.json (daily output)
 
 ### Source Configuration (`config/sources.json`)
 
-- **rssFeeds**: 17 RSS sources with categories (ai-news, company-news, research, etc.)
-- **trendingSources.reddit**: 7 AI subreddits with minScore and maxAge filters
+- **rssFeeds**: 24 RSS sources with categories (ai-news, company-news, research, etc.)
+- **trendingSources.reddit**: 15 AI subreddits with minScore and maxAge filters
 - **trendingSources.hackernews**: AI keyword filtering with minPoints threshold
 - **trendingSources.twitter**: X accounts, minLikes, maxTweetsPerAccount (disabled by default)
 - **linkedin_browser**: Profile slugs, maxPostsPerAccount, maxAgeHours
@@ -174,6 +182,8 @@ Path configured in `config/sources.json` under `linkedin.profilesFile`.
 5. **BrightData for LinkedIn KOL** - Requires BrightData SERP API with zone `mcp_unlocker`.
 
 6. **Supabase Support** - `scrape()` accepts `toSupabase` option to save results to Supabase database.
+
+7. **Cross-Source Dedup** - After all fetchers run, `deduplicateItems()` normalizes URLs (strip UTM params, www., force https) and merges items pointing to the same article. Highest-scored item wins; `_dedup_entries` records all contributing `{source, sourceName}` pairs. Stats logged: `N scraped → N dupes removed → N total`.
 
 ---
 
