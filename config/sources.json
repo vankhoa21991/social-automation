@@ -281,6 +281,12 @@
       "url": "https://karpathy.github.io/feed.xml",
       "category": "research",
       "enabled": true
+    },
+    {
+      "name": "TLDR AI",
+      "url": "https://tldr.tech/api/rss/ai",
+      "category": "ai-news",
+      "enabled": true
     }
   ],
   "linkedin_browser": {

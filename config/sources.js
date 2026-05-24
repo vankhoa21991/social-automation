@@ -23,7 +23,8 @@ export default {
     { name: "Sebastian Raschka", url: "https://magazine.sebastianraschka.com/feed", category: "research", enabled: true },
     { name: "Eugene Yan", url: "https://eugeneyan.com/rss/", category: "research", enabled: true },
     { name: "Lilian Weng", url: "https://lilianweng.github.io/index.xml", category: "research", enabled: true },
-    { name: "Andrej Karpathy", url: "https://karpathy.github.io/feed.xml", category: "research", enabled: true }
+    { name: "Andrej Karpathy", url: "https://karpathy.github.io/feed.xml", category: "research", enabled: true },
+    { name: "TLDR AI", url: "https://tldr.tech/api/rss/ai", category: "ai-news", enabled: true }
   ],
   linkedin_browser: { enabled: false, accounts: [{ slug: "julienchaumond", name: "Julien Chaumond" }, { slug: "aleksagordic", name: "Aleksa Gordić" }, { slug: "ardivekar", name: "Abhishek Divekar" }], maxPostsPerAccount: 5, maxAgeHours: 48, delayBetweenAccountsMs: 10000 },
   apiSources: [
