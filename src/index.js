@@ -355,6 +355,7 @@ function calculateScore(item) {
 }
 
 function getItemSources(item) {
+  if (item._dedup_source_names?.length > 1) return item._dedup_source_names;
   if (item._dedup_sources?.length > 1) return item._dedup_sources;
   const sources = [item.source];
   if (item.sourceName) sources.push(item.sourceName);
