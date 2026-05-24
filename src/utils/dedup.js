@@ -106,6 +106,7 @@ export function deduplicateItems(items) {
     deduped.push(winner);
   }
 
-  deduped._dupCount = dupCount;
-  return [...deduped, ...noUrl];
+  const result = [...deduped, ...noUrl];
+  result._dupCount = dupCount;
+  return result;
 }

@@ -245,6 +245,19 @@ test('item with no URL passes through unchanged', () => {
   assert.ok(result.some(i => i.id === 'x'));
 });
 
+test('_dupCount reflects removed item count', () => {
+  const url = 'https://arxiv.org/abs/2406.07612';
+  const result = deduplicateItems([mkReddit(url), mkHn(url), mkRss(url)]);
+  assert.strictEqual(result.length, 1);
+  assert.strictEqual(result._dupCount, 2);
+});
+
+test('_dupCount zero when no duplicates', () => {
+  const items = [mkRss('https://a.com'), mkHn('https://b.com')];
+  const result = deduplicateItems(items);
+  assert.strictEqual(result._dupCount, 0);
+});
+
 // ─── summary ─────────────────────────────────────────────────────────────────
 
 console.log(`\n${passed} passed, ${failed} failed`);
