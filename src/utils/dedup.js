@@ -98,10 +98,17 @@ export function deduplicateItems(items) {
     group.sort((a, b) => scoreItem(b) - scoreItem(a));
     const winner = { ...group[0] };
 
-    const allSources = [...new Set(group.map(i => i.source))];
-    const allSourceNames = [...new Set(group.map(i => i.sourceName).filter(Boolean))];
-    winner._dedup_sources = allSources;
-    winner._dedup_source_names = allSourceNames;
+    // Deduplicate by (source, sourceName) pair, preserve order (winner first)
+    const seen = new Set();
+    const entries = [];
+    for (const item of group) {
+      const key = `${item.source}::${item.sourceName}`;
+      if (!seen.has(key)) {
+        seen.add(key);
+        entries.push({ source: item.source, sourceName: item.sourceName || item.source });
+      }
+    }
+    winner._dedup_entries = entries;
 
     deduped.push(winner);
   }

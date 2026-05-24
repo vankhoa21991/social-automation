@@ -196,12 +196,33 @@ test('winner keeps highest-scored item (Reddit wins over low-HN)', () => {
   assert.strictEqual(result[0].source, 'reddit');
 });
 
-test('dedup group attaches _dedup_sources', () => {
+test('dedup group attaches _dedup_entries with source+sourceName pairs', () => {
   const url = 'https://arxiv.org/abs/2406.07612';
   const result = deduplicateItems([mkReddit(url), mkHn(url)]);
-  assert.ok(Array.isArray(result[0]._dedup_sources));
-  assert.ok(result[0]._dedup_sources.includes('reddit'));
-  assert.ok(result[0]._dedup_sources.includes('hackernews'));
+  const entries = result[0]._dedup_entries;
+  assert.ok(Array.isArray(entries));
+  assert.strictEqual(entries.length, 2);
+  assert.ok(entries.some(e => e.source === 'reddit'));
+  assert.ok(entries.some(e => e.source === 'hackernews'));
+});
+
+test('_dedup_entries interleaved format: [source1, name1, source2, name2]', () => {
+  const url = 'https://arxiv.org/abs/2406.07612';
+  const result = deduplicateItems([mkReddit(url), mkHn(url)]);
+  const entries = result[0]._dedup_entries;
+  const flat = entries.flatMap(e => [e.source, e.sourceName]);
+  assert.deepStrictEqual(flat, ['reddit', 'r/MachineLearning', 'hackernews', 'Hacker News']);
+});
+
+test('two RSS feeds: _dedup_entries has both feed names', () => {
+  const url = 'https://arxiv.org/abs/1234';
+  const feed1 = mkRss(url);
+  const feed2 = { ...mkRss(url), id: 'rss_other', sourceName: 'arXiv Machine Learning' };
+  const result = deduplicateItems([feed1, feed2]);
+  const entries = result[0]._dedup_entries;
+  assert.strictEqual(entries.length, 2);
+  assert.strictEqual(entries[0].sourceName, 'TechCrunch');
+  assert.strictEqual(entries[1].sourceName, 'arXiv Machine Learning');
 });
 
 test('different articles not merged', () => {

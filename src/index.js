@@ -265,7 +265,7 @@ async function generateCombinedFiles(results, today) {
     // Deduplicate cross-source items by canonical article URL
     const dedupedItems = deduplicateItems(allItems);
     const dupCount = dedupedItems._dupCount || 0;
-    if (dupCount > 0) logger.info(`Deduplication removed ${dupCount} duplicate(s)`);
+    logger.info(`Items: ${allItems.length} scraped → ${dupCount} dupes removed → ${allItems.length - dupCount} total`);
 
     // Filter malformed items before ranking
     const validItems = dedupedItems.filter(item => {
@@ -355,11 +355,10 @@ function calculateScore(item) {
 }
 
 function getItemSources(item) {
-  if (item._dedup_source_names?.length > 1) return item._dedup_source_names;
-  if (item._dedup_sources?.length > 1) return item._dedup_sources;
-  const sources = [item.source];
-  if (item.sourceName) sources.push(item.sourceName);
-  return sources;
+  if (item._dedup_entries?.length > 1) {
+    return item._dedup_entries.flatMap(e => [e.source, e.sourceName]);
+  }
+  return [item.source, item.sourceName].filter(Boolean);
 }
 
 function extractSummary(item) {
