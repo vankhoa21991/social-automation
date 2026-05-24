@@ -17,7 +17,13 @@ export default {
     { name: "NVIDIA Technical Blog", url: "https://blogs.nvidia.com/feed/", category: "company-engineering", enabled: true },
     { name: "LinkedIn Engineering", url: "https://www.linkedin.com/blog/engineering", category: "company-engineering", enabled: true, htmlSelectors: { linkSelector: 'a.grid-post__link, a.featured-post__headline', dateSelector: 'p.grid-post__date' } },
     { name: "arXiv AI", url: "https://rss.arxiv.org/rss/cs.AI", category: "research-papers", enabled: true },
-    { name: "arXiv Machine Learning", url: "https://rss.arxiv.org/rss/cs.LG", category: "research-papers", enabled: true }
+    { name: "arXiv Machine Learning", url: "https://rss.arxiv.org/rss/cs.LG", category: "research-papers", enabled: true },
+    { name: "arXiv NLP", url: "https://rss.arxiv.org/rss/cs.CL", category: "research-papers", enabled: true },
+    { name: "Simon Willison", url: "https://simonwillison.net/atom/everything/", category: "ai-news", enabled: true },
+    { name: "Sebastian Raschka", url: "https://magazine.sebastianraschka.com/feed", category: "research", enabled: true },
+    { name: "Eugene Yan", url: "https://eugeneyan.com/rss/", category: "research", enabled: true },
+    { name: "Lilian Weng", url: "https://lilianweng.github.io/index.xml", category: "research", enabled: true },
+    { name: "Andrej Karpathy", url: "https://karpathy.github.io/feed.xml", category: "research", enabled: true }
   ],
   linkedin_browser: { enabled: false, accounts: [{ slug: "julienchaumond", name: "Julien Chaumond" }, { slug: "aleksagordic", name: "Aleksa Gordić" }, { slug: "ardivekar", name: "Abhishek Divekar" }], maxPostsPerAccount: 5, maxAgeHours: 48, delayBetweenAccountsMs: 10000 },
   apiSources: [

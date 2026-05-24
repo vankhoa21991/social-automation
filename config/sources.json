@@ -245,6 +245,42 @@
       "url": "https://towardsdatascience.com/feed",
       "category": "ai-research",
       "enabled": true
+    },
+    {
+      "name": "arXiv NLP",
+      "url": "https://rss.arxiv.org/rss/cs.CL",
+      "category": "research-papers",
+      "enabled": true
+    },
+    {
+      "name": "Simon Willison",
+      "url": "https://simonwillison.net/atom/everything/",
+      "category": "ai-news",
+      "enabled": true
+    },
+    {
+      "name": "Sebastian Raschka",
+      "url": "https://magazine.sebastianraschka.com/feed",
+      "category": "research",
+      "enabled": true
+    },
+    {
+      "name": "Eugene Yan",
+      "url": "https://eugeneyan.com/rss/",
+      "category": "research",
+      "enabled": true
+    },
+    {
+      "name": "Lilian Weng",
+      "url": "https://lilianweng.github.io/index.xml",
+      "category": "research",
+      "enabled": true
+    },
+    {
+      "name": "Andrej Karpathy",
+      "url": "https://karpathy.github.io/feed.xml",
+      "category": "research",
+      "enabled": true
     }
   ],
   "linkedin_browser": {
